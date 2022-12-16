@@ -1,0 +1,8 @@
+services:
+  build:
+    build: .
+    volumes:
+      - .:/source
+    container_name: builder
+    network_mode: "host"
+    

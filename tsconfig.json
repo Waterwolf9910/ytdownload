@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "target": "ESNext",
+        "rootDir": "src",
+        "outDir": "dist",
+        "sourceMap": true,
+        "sourceRoot": "../src",
+        "diagnostics": true,
+        "extendedDiagnostics": true,
+        "removeComments": true,
+    },
+    "exclude": [
+        "node_modules",
+        "static_src",
+    ],
+}

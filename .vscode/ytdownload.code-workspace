@@ -1,0 +1,19 @@
+{
+	
+	"folders": [
+		{
+			"path": "../"
+		}
+	],
+	"settings": {
+		"typescript.tsdk": ".yarn/sdks/typescript/lib",
+		"typescript.enablePromptUseWorkspaceTsdk": true,
+		"vscode-edge-devtools.webRoot": "${workspaceFolder}/dist/static"
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			
+		]
+	}
+}

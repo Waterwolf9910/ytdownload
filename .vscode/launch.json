@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program",
+            "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-22.0.0-1476c0568e/node_modules/electron/dist/electron",
+            "windows": {
+                "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-22.0.0-1476c0568e/node_modules/electron/dist/electron.exe"
+            },
+            // "runtimeExecutable": "yarn",
+            "args": [
+                // "electron",
+                "."
+            ],
+            "preLaunchTask": "build 1",
+            "outputCapture": "std",
+            "sourceMaps": true,
+            "skipFiles": [
+                "<node_internals>/**",
+                "${workspaceFolder}/.yarn/**",
+                "${workspaceFolder}/.pnp.cjs",
+                "${workspaceFolder}/.pnp.loader.mjs",
+            ],
+            "console": "integratedTerminal",
+            "autoAttachChildProcesses": true,
+            // "program": "${workspaceFolder}/dist/index.js",
+            // "outFiles": [
+            //     "${workspaceFolder}/**/*.js"
+            // ]
+        }
+    ]
+}
