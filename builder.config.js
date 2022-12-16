@@ -37,10 +37,10 @@ let config = {
     appId: `com.waterwolfies.${ appConfig.name }`,
     // appId: `com.waterwolfies.youtube_download`,
     appImage: {
-        publish: {
-            ...basePublish,
-            url: basePublish.url + "/linux"
-        }
+        // publish: {
+        //     ...basePublish,
+        //     url: basePublish.url + "/linux",
+        // }
     },
     icon: path.resolve(__dirname, "dist", "icon.png"),
     // productName: appConfig.name,
@@ -94,6 +94,10 @@ let config = {
 
     // },
     win: {
+        publish: {
+            ...basePublish,
+            url: basePublish.url + "/win"
+        },
         target: [
             {
                 target: "nsis",
@@ -112,30 +116,34 @@ let config = {
     msi: {
         oneClick: false,
         runAfterFinish: false,
-        publish: {
-            ...basePublish,
-            url: basePublish.url + "/win"
-        }
+        // publish: {
+        //     ...basePublish,
+        //     url: basePublish.url + "/win"
+        // }
     },
     nsis: {
         oneClick: false,
-        publish: {
-            ...basePublish,
-            url: basePublish.url + "/win"
-        },
+        // publish: {
+        //     ...basePublish,
+        //     url: basePublish.url + "/win"
+        // },
         allowToChangeInstallationDirectory: true,
         license: path.resolve(__dirname, "LICENSE"),
         runAfterFinish: true,
     },
     squirrelWindows: {
         msi: true,
-        publish: {
-            ...basePublish,
-            url: basePublish.url + "/win"
-        }
+        // publish: {
+        //     ...basePublish,
+        //     url: basePublish.url + "/win"
+        // }
     },
     linux: {
         category: "AudioVideo",
+        publish: {
+            ...basePublish,
+            url: basePublish.url + "/linux"
+        },
         target: [
             {
                 target: "deb",
