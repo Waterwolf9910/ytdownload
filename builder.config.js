@@ -42,7 +42,7 @@ let config = {
         //     url: basePublish.url + "/linux",
         // }
     },
-    icon: path.resolve(__dirname, "dist", "icon.png"),
+    icon: path.resolve(__dirname, "icon.png"),
     // productName: appConfig.name,
     directories: {
         // buildResources: null,

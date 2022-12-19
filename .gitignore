@@ -17,5 +17,4 @@ builds
 temp
 dev-*
 
-!**/.yarn/unplugged
 !*.zip
