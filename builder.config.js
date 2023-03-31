@@ -6,7 +6,6 @@ let appConfig = require("./package.json")
 fs.copyFileSync(path.resolve(".pnp.cjs"), path.resolve("dist", ".pnp.cjs"))
 fs.copyFileSync(path.resolve(".pnp.loader.mjs"), path.resolve("dist", ".pnp.loader.mjs"))
 
-
 /**
  * @type {import("builder-util").ArchType[]}
  */
@@ -15,19 +14,11 @@ let winArches = [
 ]
 
 /**
- * @type {import("builder-util").ArchType[]}
- */
-let linuxArches = [
-    // "arm64",
-    "x64",
-]
-
-/**
  * @type {import("app-builder-lib/out/core").Publish}
  */
-let basePublish = {
+let publish = {
     provider: "generic",
-    url: "https://waterwolfies.com/downloads/ytdl_prog",
+    url: "https://waterwolfies.com/downloads/ytdl_prog/${os}/",
 }
 
 /**
@@ -36,6 +27,7 @@ let basePublish = {
 let config = {
     appId: `com.waterwolfies.${ appConfig.name }`,
     // appId: `com.waterwolfies.youtube_download`,
+    publish,
     appImage: {
         // publish: {
         //     ...basePublish,
@@ -46,7 +38,7 @@ let config = {
     // productName: appConfig.name,
     directories: {
         // buildResources: null,
-        output: path.resolve(__dirname, "build")
+        output: path.resolve(__dirname, "build", "${os}/${arch}/${version}")
     },
     compression: "normal",
     copyright: `Copyright © 2022 waterwolf9910 <waterwolf9910@waterwolfies.com>`,
@@ -94,10 +86,10 @@ let config = {
 
     // },
     win: {
-        publish: {
-            ...basePublish,
-            url: basePublish.url + "/win"
-        },
+        // publish: {
+        //     ...basePublish,
+        //     url: basePublish.url + "/win"
+        // },
         target: [
             {
                 target: "nsis",
@@ -140,26 +132,22 @@ let config = {
     },
     linux: {
         category: "AudioVideo",
-        publish: {
-            ...basePublish,
-            url: basePublish.url + "/linux"
-        },
+        // publish: {
+        //     ...basePublish,
+        //     url: basePublish.url + "/linux"
+        // },
         target: [
             {
                 target: "deb",
-                arch: linuxArches
             },
             {
                 target: "tar.gz",
-                arch: linuxArches
             },
             {
                 target: "zip",
-                arch: linuxArches
             },
             {
                 target: "AppImage",
-                arch: linuxArches
             },
         ]
     },

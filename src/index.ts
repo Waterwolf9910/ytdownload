@@ -10,7 +10,7 @@ import fs = require("fs")
 import Module = require("module")
 let orequire = Module.prototype.require
 //@ts-ignore
-Module.prototype.require = function() {
+Module.prototype.require = function () {
     // eslint-disable-next-line prefer-rest-params
     if (arguments[0] == "electron") {
         return electron;
@@ -89,8 +89,8 @@ autoUpdater.on("update-downloaded", async () => {
 })
 
 autoUpdater.on("download-progress", async (info) => {
-    console.log(info)
-    fs.appendFileSync(path.resolve(eapp.getPath("home"), "a.txt"), JSON.stringify(info) + "\n")
+    // console.log(info)
+    // fs.appendFileSync(path.resolve(eapp.getPath("home"), "a.txt"), JSON.stringify(info) + "\n")
     mainWin.webContents.send("update", JSON.stringify(info))
 })
 
@@ -114,8 +114,8 @@ autoUpdater.on("checking-for-update", () => {
     // fs.appendFileSync(path.resolve(eapp.getPath("home"), "a.txt"), "Checking\n")
 })
 // console.log(eapp)
-let temp = path.resolve(eapp.getPath("userData"),"./temp")
-fs.mkdirSync(path.resolve(eapp.getPath("userData"), "ffmpeg"), {recursive: true})
+let temp = path.resolve(eapp.getPath("userData"), "./temp")
+fs.mkdirSync(path.resolve(eapp.getPath("userData"), "ffmpeg"), { recursive: true })
 let config: {
     output: string,
     concurent_dl: number,
@@ -127,8 +127,8 @@ let config: {
 }
 // fs.mkdirSync(path.resolve(out, "Music", "Various Artists"), { recursive: true })
 // fs.mkdirSync(path.resolve(out, "TV Shows"), { recursive: true })
-fs.rmSync(temp, {recursive: true, force: true})
-fs.mkdirSync(temp, {recursive: true})
+fs.rmSync(temp, { recursive: true, force: true })
+fs.mkdirSync(temp, { recursive: true })
 type info = {
     id: number,
     video: string,
@@ -141,10 +141,10 @@ type info = {
 }
 
 electron.ipcMain.handle("getpl", async (ev, link, audioOnly = true, reversePL = false, removeExtras = false, customRegExp: string[] = []) => {
-    let list: {title: string, query: ytpl.Item}[] = []
+    let list: { title: string, query: ytpl.Item }[] = []
     let pl: ytpl.Result
     try {
-        pl = await ytpl(link, {limit: Infinity})
+        pl = await ytpl(link, { limit: Infinity })
     } catch {
         ev.sender.send("error", "Error getting playlist info")
         return
@@ -179,7 +179,7 @@ electron.ipcMain.handle("getpl", async (ev, link, audioOnly = true, reversePL = 
     }
 
     selWin.show()
-    selWin.webContents.send("selector", {audioOnly, removeExtras, list, title: pl.title, url: pl.url})
+    selWin.webContents.send("selector", { audioOnly, removeExtras, list, title: pl.title, url: pl.url })
     mainWin.minimize()
 })
 
@@ -189,8 +189,23 @@ let dlqueue: number[] = []
 let procqueue: number[] = []
 
 class NextEvents extends events {
+    #pwlck = 0
+
+    setLock(): void {
+        if (!electron.powerSaveBlocker.isStarted(this.#pwlck)) {
+            this.#pwlck = electron.powerSaveBlocker.start("prevent-app-suspension")
+        }
+    }
+
     once(eventName: string, listener: (...args: unknown[]) => void): this {
         return super.once(eventName, listener)
+    }
+
+    emit(eventName: string | symbol, ...args: unknown[]): boolean {
+        if (processing < 2) {
+            electron.powerSaveBlocker.stop(this.#pwlck)
+        }
+        return super.emit(eventName, ...args)
     }
 }
 
@@ -199,7 +214,7 @@ let nextevent = new NextEvents()
 nextevent.on("donedl", () => {
     // downloading--
     if (dlqueue.length > 0) {
-        nextevent.emit(`startdl_${dlqueue[0]}`)
+        nextevent.emit(`startdl_${dlqueue[ 0 ]}`)
         dlqueue.shift()
     }
     // console.log("dq", downloading, dlqueue)
@@ -209,27 +224,30 @@ nextevent.on("donedl", () => {
 nextevent.on("doneproc", () => {
     // processing--
     if (procqueue.length > 0) {
-        nextevent.emit(`startproc_${procqueue[0]}`)
+        nextevent.emit(`startproc_${procqueue[ 0 ]}`)
         procqueue.shift()
     }
     // console.log("pq", processing, procqueue)
 })
 
-electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, removeExtras: boolean, title: string}) => {
+electron.ipcMain.handle("dlpl", (ev, data: { info: info[], audioOnly: boolean, removeExtras: boolean, title: string }) => {
+    nextevent.setLock()
     selWin.hide()
     mainWin.restore()
     console.log("Starting pl dl")
     mainWin.webContents.send("result", "Downloading Playlist")
     if (data.audioOnly) {
-        fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')), { recursive: true })
+        data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/[ ]+/g, ' ')
+        fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", data.title), { recursive: true })
     } else {
-        fs.mkdirSync(path.resolve(config.output, "TV Shows", data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, ''), "Season 00"), { recursive: true })
+        data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/[ ]+/g, ' ')
+        fs.mkdirSync(path.resolve(config.output, "TV Shows", data.title, "Season 00"), { recursive: true })
     }
     // console.log(data.removeExtras)
     for (let i = 0; i < data.info.length; i++) {
         let thisId = id++
-        let query = data.info[i].query
-        let thisTrack = `${i+1}`
+        let query = data.info[ i ].query
+        let thisTrack = `${i + 1}`
         if (thisTrack[ 0 ] !== "0") {
             thisTrack = `0${thisTrack}`
         }
@@ -238,8 +256,8 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
             video: path.resolve(temp, `${thisId}_video.mp4`),
             audio: path.resolve(temp, `${thisId}_audio.mp4`),
             thumbnail: path.resolve(temp, `${thisId}_thumbnail.jpeg`),
-            output: path.join('${dir}', `\${replace_title}${data.info[i].title.replaceAll("w/", 'with').replace(/[<>:"/\\|?*]/g, '')}.${data.audioOnly ? "mp3" : "mp4"}`),
-            title: data.info[i].title,
+            output: path.join('${dir}', `\${replace_title}${data.info[ i ].title.replaceAll("w/", 'with').replace(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/[ ]+/g, ' ')}.${data.audioOnly ? "mp3" : "mp4"}`),
+            title: data.info[ i ].title.replace(/\.$/, '').replaceAll(/[ ]+/g, ' '),
             track: i + 1,
             query,
         }
@@ -252,7 +270,7 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
         info.output = data.removeExtras ? info.output.replace(/[0-9]+\.\(\)\?/g, '').replace(/\( \)?\([A-z0-9 ]+\)/g, '') : info.output
         fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
         if (!data.audioOnly) {
-            info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, ''), "Season 00") + path.sep).replace("${replace_title}", `S00e${thisTrack} - `)
+            info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", data.title, "Season 00") ).replace("${replace_title}", `S00e${thisTrack} - `)
             https.get(info.query.bestThumbnail.url, (res) => {
                 let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
                 res.pipe(stream)
@@ -261,8 +279,8 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
                 })
             })
         } else {
-            info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')) + path.sep).replace("${replace_title}", ''/* `${thisTrack} -` */)
-            fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, ''), "track.json"), JSON.stringify({ track }))
+            info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", data.title)).replace("${replace_title}", ''/* `${thisTrack} -` */)
+            fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", data.title, "track.json"), JSON.stringify({ track }))
         }
         let alt = 0;
         let outputRaw = info.output.replace(".mp3", " ").replace(".mp4", " ")
@@ -273,7 +291,7 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
             info.title = titleRaw + ` (alternate ${alt})`
         }
         fs.writeFileSync(info.output, "Checker File")
-        
+
         nextevent.once(`startdl_${info.id}`, () => {
             downloading++
             let vidDone = false
@@ -305,7 +323,7 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
                                 // '-f', "mp3",
                                 '-metadata', `album=${data.title}`,
                                 '-metadata', `album_artist=Various Artists`,
-                                '-metadata', `artist=${info.query.author.name || "No Artist"}"`,
+                                '-metadata', `artist=${info.query.author.name || "No Artist"}`,
                                 '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
                                 '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
                                 '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
@@ -320,7 +338,7 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
                             ], {
                                 shell: false,
                             })
-                            console.log(ffmpeg.spawnargs.join(" "))
+                            // console.log(ffmpeg.spawnargs.join(" "))
                         } else {
                             ffmpeg = cp.spawn(ffmpegPath, [
                                 '-i', `${info.video}`,
@@ -336,7 +354,7 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
                                 // '-f', 'mp4',
                                 '-metadata', `album=${data.title}`,
                                 '-metadata', `album_artist=${data.title}`,
-                                '-metadata', `artist=${info.query.author.name || "No Artist"}"`,
+                                '-metadata', `artist=${info.query.author.name || "No Artist"}`,
                                 '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
                                 '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
                                 '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
@@ -352,7 +370,7 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
                                 shell: false,
                                 // stdio: ["pipe", output, "pipe"]
                             })
-                            console.log(ffmpeg.spawnargs.join(" "))
+                            // console.log(ffmpeg.spawnargs.join(" "))
                         }
                         ffmpeg.on("error", () => { ffmpegLog.write(onError) })
                         ffmpeg.stderr.pipe(ffmpegLog, { end: true })
@@ -367,7 +385,7 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
                             }
                             fs.rmSync(info.audio)
                             mainWin.webContents.send("result", `${info.title} Done`)
-                            console.log("Done")
+                            // console.log("Done")
                             nextevent.emit("doneproc")
                             processing--
                             // eapp.quit()
@@ -426,10 +444,10 @@ electron.ipcMain.handle("dlpl", (ev, data: {info: info[], audioOnly: boolean, re
 electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, removeExtras = false, customRegExp: string[] = []) => {
     selWin.hide()
     mainWin.restore()
-    console.log("starting vid dl")
-    console.log(await ytsr(link), link)
+    // console.log("starting vid dl")
+    // console.log(await ytsr(link), link)
     if (ytdl.validateURL(link)) {
-        let query = (await ytsr(link.replace(/&list=[A-z0-9]+/, ''), {limit: 1})).items[0]
+        let query = (await ytsr(link.replace(/&list=[A-z0-9]+/, ''), { limit: 1 })).items[ 0 ]
         let thisId = id++
         if (!query) {
             return `Error getting video info for ${link}`
@@ -438,7 +456,6 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
             ev.sender.send("result", `Downloading ${query.title}`)
             if (audioOnly) {
                 fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", "Mixed"), { recursive: true })
-                // console.log(fs.existsSync(path.resolve(out, "Music", "Various Artists", "Mixed", "track.json")))
                 track = fs.existsSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 0;
             } else {
                 fs.mkdirSync(path.resolve(config.output, "TV Shows", "Mixed", "Season 00"), { recursive: true })
@@ -448,7 +465,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
             if (thisTrack[ 0 ] !== "0") {
                 thisTrack = `0${thisTrack}`
             }
-            let title = query.title
+            let title = query.title.replace(/\.$/, '')
             try {
                 for (let regexp of customRegExp) {
                     let rex = new RegExp(regexp, "g")
@@ -472,7 +489,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
             }
             let onError = (err) => {
                 if (err) {
-                    ev.sender.send("error",`Error Downloading: ${info.title}`)
+                    ev.sender.send("error", `Error Downloading: ${info.title}`)
                     return `Error Downloading: ${info.title}`
                 }
             }
@@ -480,7 +497,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
             fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
             // console.log("hi", info.id)
             if (!audioOnly) {
-                info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", "Mixed", "Season 00") + path.sep).replace("${replace_title}", `S00e${thisTrack} -`)
+                info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", "Mixed", "Season 00") + path.sep).replace("${replace_title} ", `S00e${thisTrack} -`)
                 fs.writeFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), JSON.stringify({ track }))
                 https.get(info.query.bestThumbnail.url, (res) => {
                     let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
@@ -490,7 +507,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
                     })
                 })
             } else {
-                info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", "Mixed") + path.sep).replace("${replace_title}", '' /* `${thisTrack} -` */)
+                info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", "Mixed") + path.sep).replace("${replace_title} ", '' /* `${thisTrack} -` */)
                 fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), JSON.stringify({ track }))
             }
             if (fs.existsSync(info.output)) {
@@ -523,13 +540,13 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
                             let ffmpegLog = fs.createWriteStream(path.resolve(eapp.getPath("userData"), "ffmpeg", `${info.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.log`), { autoClose: true, flags: 'a+' })
                             let ffmpeg: cp.ChildProcess
                             if (audioOnly) {
-                                console.log(title)
+                                // console.log(title)
                                 ffmpeg = cp.spawn(ffmpegPath, [
                                     '-i', `${info.audio}`,
                                     '-map', '0:a',
                                     '-c:a', 'mp3',
                                     '-metadata', `title=${title}`,
-                                    '-metadata', `artist=${info.query.author.name || "No Artist"}"`,
+                                    '-metadata', `artist=${info.query.author.name || "No Artist"}`,
                                     '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
                                     '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
                                     '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
@@ -558,7 +575,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
                                     '-c:v:1', 'mjpeg',
                                     '-disposition:v:1', 'attached_pic',
                                     '-metadata', `title=${title}`,
-                                    '-metadata', `artist=${info.query.author.name || "No Artist"}"`,
+                                    '-metadata', `artist=${info.query.author.name || "No Artist"}`,
                                     '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
                                     '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
                                     '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
@@ -586,7 +603,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
                                 }
                                 fs.rmSync(info.audio)
                                 ev.sender.send("result", `${info.title} Done`)
-                                console.log("Done")
+                                // console.log("Done")
                                 nextevent.emit("doneproc")
                                 processing--
                                 // eapp.quit()
@@ -647,7 +664,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
             return "Not a video"
         }
     } else {
-        ev.sender.send("error", `${link} is not a valid video` )
+        ev.sender.send("error", `${link} is not a valid video`)
         return `${link} is not a valid video`
     }
 
@@ -662,14 +679,14 @@ electron.ipcMain.handle("valid", (ev, link: string) => {
 })
 
 electron.ipcMain.handle("choose_output", () => {
-    let folder = electron.dialog.showOpenDialogSync({properties: ["createDirectory", "showHiddenFiles", "openDirectory"], defaultPath: config.output, title: "Select An Output Folder"})
-    config.output = folder != null ? folder[0] : config.output
+    let folder = electron.dialog.showOpenDialogSync({ properties: [ "createDirectory", "showHiddenFiles", "openDirectory" ], defaultPath: config.output, title: "Select An Output Folder" })
+    config.output = folder != null ? folder[ 0 ] : config.output
     fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, (_key, val) => (val == Infinity ? "infinity" : val), 4))
 })
 
 electron.ipcMain.handle("set_concurrency", (ev, dl: number | "infinity" = 5, proc: number | "infinity" = 5) => {
     //@ts-ignore
-    console.log(dl, proc, parseInt(dl), parseInt(proc))
+    // console.log(dl, proc, parseInt(dl), parseInt(proc))
     if (dl.toString().toLowerCase() == "infinity") {
         config.concurent_dl = Infinity
     } else if (typeof dl == "number") {
@@ -693,8 +710,8 @@ electron.ipcMain.handle("set_concurrency", (ev, dl: number | "infinity" = 5, pro
     }
 
     //@ts-ignore
-    console.log(config, isNaN(parseInt(dl)), isNaN(parseInt(proc)))
-    
+    // console.log(config, isNaN(parseInt(dl)), isNaN(parseInt(proc)))
+
     fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, (_key, val) => (val == Infinity ? "infinity" : val), 4))
     return "Values Set\n"
 })
@@ -706,7 +723,7 @@ let close = () => {
 }
 
 let createWin = (url: string, preloadFile = "", showOnCreate = true) => {
-    let win = new electron.BrowserWindow ({ 
+    let win = new electron.BrowserWindow({
         show: showOnCreate,
         webPreferences: {
             preload: preloadFile,
@@ -751,7 +768,7 @@ let sleep = async (ms: number) => {
 
 let port: number
 let server = http.createServer(app)
-let id = fs.existsSync(path.resolve(temp, "id.json")) ? JSON.parse(fs.readFileSync(path.resolve(temp, "id.json"), {encoding: 'utf-8'})).id : 0;
+let id = fs.existsSync(path.resolve(temp, "id.json")) ? JSON.parse(fs.readFileSync(path.resolve(temp, "id.json"), { encoding: 'utf-8' })).id : 0;
 let track = 0
 
 let startServer = (): number => {
@@ -776,7 +793,7 @@ app.all("*", (req, res, next) => {
     res.removeHeader("x-powered-by")
     next()
 })
-app.use(express.static(path.resolve(__dirname, "static"), {dotfiles: 'ignore', extensions: ['html']}))
+app.use(express.static(path.resolve(__dirname, "static"), { dotfiles: 'ignore', extensions: [ 'html' ] }))
 app.disable("x-powered-by")
 
 let mainWin: electron.BrowserWindow
@@ -787,13 +804,13 @@ eapp.whenReady().then(() => {
     console.log("Started!")
     console.log(config)
     if (fs.existsSync(path.resolve(eapp.getPath("userData"), "config.json"))) {
-        config = JSON.parse(fs.readFileSync(path.resolve(eapp.getPath("userData"), "config.json"), {encoding: 'utf-8'}), (_key, val) => (val == "infinity" ? Infinity : val))
+        config = JSON.parse(fs.readFileSync(path.resolve(eapp.getPath("userData"), "config.json"), { encoding: 'utf-8' }), (_key, val) => (val == "infinity" ? Infinity : val))
     } else {
         fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, null, 4))
     }
     console.log(config)
     port = startServer()
-    mainWin = createWin(`http://localhost:${port}`, path.resolve(__dirname, "preloads" ,"index.js"))
+    mainWin = createWin(`http://localhost:${port}`, path.resolve(__dirname, "preloads", "index.js"))
     selWin = createWin(`http://localhost:${port}/select`, path.resolve(__dirname, "preloads", "select.js"), false)
     selWin.removeAllListeners("close")
     selWin.on("close", (e) => {
