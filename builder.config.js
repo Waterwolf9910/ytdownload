@@ -38,7 +38,7 @@ let config = {
     // productName: appConfig.name,
     directories: {
         // buildResources: null,
-        output: path.resolve(__dirname, "build", "${os}/${arch}/${version}")
+        output: path.resolve(__dirname, "build", "${os}/${version}/${arch}")
     },
     compression: "normal",
     copyright: `Copyright © 2022 waterwolf9910 <waterwolf9910@waterwolfies.com>`,
