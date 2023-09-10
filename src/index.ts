@@ -23,8 +23,7 @@ import _ffmpegPath = require("ffmpeg-static")
 import cp = require("child_process")
 import http = require("http")
 import https = require("https")
-import ytdl = require("ytdl-core")
-import ytsr = require("ytsr")
+import ytdl = require("@distube/ytdl-core")
 import ytpl = require("ytpl")
 import express = require("express")
 // import url = require("url")
@@ -129,15 +128,26 @@ let config: {
 // fs.mkdirSync(path.resolve(out, "TV Shows"), { recursive: true })
 fs.rmSync(temp, { recursive: true, force: true })
 fs.mkdirSync(temp, { recursive: true })
-type info = {
+type infoPL = {
     id: number,
     video: string,
     audio: string,
-    thumbnail: string,
+    thumbnail: string
     output: string,
     title: string,
     track: number,
-    query: ytsr.Video | ytpl.Item
+    query: ytpl.Item
+}
+
+type infoVid = {
+    id: number,
+    video: string,
+    audio: string,
+    thumbnail: string
+    output: string,
+    title: string,
+    track: number,
+    query: ytdl.VideoDetails
 }
 
 electron.ipcMain.handle("getpl", async (ev, link, audioOnly = true, reversePL = false, removeExtras = false, customRegExp: string[] = []) => {
@@ -230,7 +240,7 @@ nextevent.on("doneproc", () => {
     // console.log("pq", processing, procqueue)
 })
 
-electron.ipcMain.handle("dlpl", (ev, data: { info: info[], audioOnly: boolean, removeExtras: boolean, title: string }) => {
+electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean, removeExtras: boolean, title: string }) => {
     nextevent.setLock()
     selWin.hide()
     mainWin.restore()
@@ -251,7 +261,7 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: info[], audioOnly: boolean, r
         if (thisTrack[ 0 ] !== "0") {
             thisTrack = `0${thisTrack}`
         }
-        let info: info = {
+        let info: infoPL = {
             id: thisId,
             video: path.resolve(temp, `${thisId}_video.mp4`),
             audio: path.resolve(temp, `${thisId}_audio.mp4`),
@@ -447,221 +457,217 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
     // console.log("starting vid dl")
     // console.log(await ytsr(link), link)
     if (ytdl.validateURL(link)) {
-        let query = (await ytsr(link.replace(/&list=[A-z0-9]+/, ''), { limit: 1 })).items[ 0 ]
+        let query = (await ytdl.getInfo(link)).videoDetails
         let thisId = id++
         if (!query) {
             return `Error getting video info for ${link}`
         }
-        if (query.type == "video" && !query.isLive && !query.isUpcoming) {
-            ev.sender.send("result", `Downloading ${query.title}`)
-            if (audioOnly) {
-                fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", "Mixed"), { recursive: true })
-                track = fs.existsSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 0;
-            } else {
-                fs.mkdirSync(path.resolve(config.output, "TV Shows", "Mixed", "Season 00"), { recursive: true })
-                track = fs.existsSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 1;
-            }
-            let thisTrack = `${++track}`
-            if (thisTrack[ 0 ] !== "0") {
-                thisTrack = `0${thisTrack}`
-            }
-            let title = query.title.replace(/\.$/, '')
-            try {
-                for (let regexp of customRegExp) {
-                    let rex = new RegExp(regexp, "g")
-                    title = title.replace(rex, '')
-                }
-            } catch (err) {
-                ev.sender.send("error", "Invalid Regular Expression")
-                ev.sender.send("error", err)
-                return
-            }
-            let info = {
-                id: thisId,
-                video: path.resolve(temp, `${thisId}_video.mp4`),
-                audio: path.resolve(temp, `${thisId}_audio.mp4`),
-                // video_output: path.resolve(temp, `${thisId}.mp4`),
-                thumbnail: path.resolve(temp, `${thisId}_thumbnail.jpeg`),
-                output: path.join('${dir}', `\${replace_title} ${title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.${audioOnly ? "mp3" : "mp4"}`),
-                title,
-                track,
-                query
-            }
-            let onError = (err) => {
-                if (err) {
-                    ev.sender.send("error", `Error Downloading: ${info.title}`)
-                    return `Error Downloading: ${info.title}`
-                }
-            }
-            info.output = removeExtras ? info.output.replace(/[0-9]+\. /g, '').replace(/ \([A-z0-9 ]+\)/g, '') : info.output
-            fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
-            // console.log("hi", info.id)
-            if (!audioOnly) {
-                info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", "Mixed", "Season 00") + path.sep).replace("${replace_title} ", `S00e${thisTrack} -`)
-                fs.writeFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), JSON.stringify({ track }))
-                https.get(info.query.bestThumbnail.url, (res) => {
-                    let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
-                    res.pipe(stream)
-                    stream.on("finish", () => {
-                        stream.close()
-                    })
-                })
-            } else {
-                info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", "Mixed") + path.sep).replace("${replace_title} ", '' /* `${thisTrack} -` */)
-                fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), JSON.stringify({ track }))
-            }
-            if (fs.existsSync(info.output)) {
-                info.output = info.output.replace(".mp3", " (alternate).mp3").replace(".mp4", " (alternate).mp4")
-                info.title += " (alternate)"
-            } else {
-                fs.writeFileSync(info.output, "Checker File")
-            }
-            nextevent.once(`startdl_${info.id}`, () => {
-                downloading++
-                let vidDone = false
-                let audioDone = false
-                let videoFile: fs.WriteStream
-                let videoStream: import("stream").Readable
-                try {
-                    if (!audioOnly) {
-                        videoFile = fs.createWriteStream(info.video, { autoClose: true })
-                        videoStream = ytdl(link, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestvideo" })
-                    }
-                    let audioFile = fs.createWriteStream(info.audio, { autoClose: true })
-                    let audioStream = ytdl(link, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestaudio" })
-                    let finsh = () => {
-                        nextevent.emit("donedl")
-                        downloading--
-                        processing++
-                        ev.sender.send("result", `Processing ${info.title}`)
-                        try {
-                            let date = dayjs()
-                            fs.appendFileSync(path.resolve(eapp.getPath("userData"), "ffmpeg.log"), `${info.title} started at ${date.format("DD/MM/YYYY HH:mm:ss")}\n`)
-                            let ffmpegLog = fs.createWriteStream(path.resolve(eapp.getPath("userData"), "ffmpeg", `${info.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.log`), { autoClose: true, flags: 'a+' })
-                            let ffmpeg: cp.ChildProcess
-                            if (audioOnly) {
-                                // console.log(title)
-                                ffmpeg = cp.spawn(ffmpegPath, [
-                                    '-i', `${info.audio}`,
-                                    '-map', '0:a',
-                                    '-c:a', 'mp3',
-                                    '-metadata', `title=${title}`,
-                                    '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                    '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
-                                    '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
-                                    '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
-                                    '-metadata', `performer=${info.query.author.name || "No Performer"}`, //.replaceAll("'", '')
-                                    '-metadata', `genre=YoutTube Video`,
-                                    '-metadata', `album_artist=Various Artists`,
-                                    '-metadata', `track=${info.track}`,
-                                    '-metadata', `disc=1`,
-                                    '-metadata', `album=Mixed`,
-                                    "-y",
-                                    // `comment="${info.query.description?.replaceAll('"', '').replaceAll("'", '') || "No Description"}"`,
-                                    info.output
-                                ], {
-                                    shell: false,
-                                })
-                            } else {
-                                ffmpeg = cp.spawn(ffmpegPath, [
-                                    '-i', info.video,
-                                    '-i', info.audio,
-                                    '-i', info.thumbnail,
-                                    '-map', '0:v',
-                                    '-c:v:0', 'copy',
-                                    '-map', '1:a',
-                                    '-c:a:0', 'aac',
-                                    '-map', '2:v',
-                                    '-c:v:1', 'mjpeg',
-                                    '-disposition:v:1', 'attached_pic',
-                                    '-metadata', `title=${title}`,
-                                    '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                    '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
-                                    '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
-                                    '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
-                                    '-metadata', `performer=${info.query.author.name || "No Performer"}`, //.replaceAll("'", '')
-                                    '-metadata', `album=Mixed`,
-                                    '-metadata', `track=${info.track}`,
-                                    '-metadata', `disc=1`,
-                                    "-y",
-                                    // ` comment="${info.query.description?.replaceAll('"', '').replaceAll("'", '') || "No Description"}"`,
-                                    info.output
-                                ], {
-                                    shell: false,
-                                })
-                            }
-                            ffmpeg.on("error", () => { ffmpegLog.write(onError) })
-                            ffmpeg.stderr.pipe(ffmpegLog, { end: true })
-                            ffmpeg.stderr.pipe(process.stderr, { end: true })
-                            ffmpeg.stdout.pipe(ffmpegLog, { end: true })
-                            ffmpeg.stdout.pipe(process.stdout, { end: true })
-                            ffmpeg.on("exit", () => {
-                                ffmpegLog.close()
-                                if (!audioOnly) {
-                                    fs.rmSync(info.video)
-                                    fs.rmSync(info.thumbnail)
-                                }
-                                fs.rmSync(info.audio)
-                                ev.sender.send("result", `${info.title} Done`)
-                                // console.log("Done")
-                                nextevent.emit("doneproc")
-                                processing--
-                                // eapp.quit()
-                            })
-                        } catch {
-                            ev.sender.send("error", `Error Downloading: ${info.title}`)
-                            return `Error Downloading: ${info.title}`
-                        }
-                    }
-                    let checkAndCloseAudio = () => {
-                        // console.log("audio done")
-                        if (vidDone || audioOnly) {
-                            nextevent.once(`startproc_${info.id}`, finsh)
-                            if (processing < config.concurent_process) {
-                                nextevent.emit(`startproc_${info.id}`)
-                            } else {
-                                procqueue.push(info.id)
-                            }
-                        } else if (!audioDone) {
-                            audioFile.close()
-                            audioDone = true;
-                        }
-                    }
-                    let checkAndCloseVideo = () => {
-                        // console.log("video done")
-                        if (audioDone) {
-                            nextevent.once(`startproc_${info.id}`, finsh)
-                            if (processing < config.concurent_process) {
-                                nextevent.emit(`startproc_${info.id}`)
-                            } else {
-                                procqueue.push(info.id)
-                            }
-                        } else if (!vidDone) {
-                            videoFile.close()
-                            vidDone = true;
-                        }
-                    }
-                    audioFile.on("finish", checkAndCloseAudio)
-                    audioStream.pipe(audioFile, { end: true })
-                    if (!audioOnly) {
-                        videoFile.on("finish", checkAndCloseVideo)
-                        videoStream.pipe(videoFile, { end: true })
-                    }
-                } catch (err) {
-                    onError(err)
-                }
-            })
-            if (downloading < config.concurent_dl) {
-                nextevent.emit(`startdl_${info.id}`)
-            } else {
-                dlqueue.push(info.id)
-            }
-        } else if (query.type == "video" && (query.isLive || query.isUpcoming)) {
+        if (query.isLiveContent || query.age_restricted || query.isPrivate) {
             ev.sender.send("error", "Video is currently unavalible (might be live)")
             return "Video is currently unavalible (might be live)"
+        }
+        ev.sender.send("result", `Downloading ${query.title}`)
+        if (audioOnly) {
+            fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", "Mixed"), { recursive: true })
+            track = fs.existsSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 0;
         } else {
-            ev.sender.send("error", "Not a video")
-            return "Not a video"
+            fs.mkdirSync(path.resolve(config.output, "TV Shows", "Mixed", "Season 00"), { recursive: true })
+            track = fs.existsSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 1;
+        }
+        let thisTrack = `${++track}`
+        if (thisTrack[ 0 ] !== "0") {
+            thisTrack = `0${thisTrack}`
+        }
+        let title = query.title.replace(/\.$/, '')
+        try {
+            for (let regexp of customRegExp) {
+                let rex = new RegExp(regexp, "g")
+                title = title.replace(rex, '')
+            }
+        } catch (err) {
+            ev.sender.send("error", "Invalid Regular Expression")
+            ev.sender.send("error", err)
+            return
+        }
+        let info = {
+            id: thisId,
+            video: path.resolve(temp, `${thisId}_video.mp4`),
+            audio: path.resolve(temp, `${thisId}_audio.mp4`),
+            // video_output: path.resolve(temp, `${thisId}.mp4`),
+            thumbnail: path.resolve(temp, `${thisId}_thumbnail.jpeg`),
+            output: path.join('${dir}', `\${replace_title} ${title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.${audioOnly ? "mp3" : "mp4"}`),
+            title,
+            track,
+            query
+        }
+        let onError = (err) => {
+            if (err) {
+                ev.sender.send("error", `Error Downloading: ${info.title}`)
+                return `Error Downloading: ${info.title}`
+            }
+        }
+        info.output = removeExtras ? info.output.replace(/[0-9]+\. /g, '').replace(/ \([A-z0-9 ]+\)/g, '') : info.output
+        fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
+        // console.log("hi", info.id)
+        if (!audioOnly) {
+            info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", "Mixed", "Season 00") + path.sep).replace("${replace_title} ", `S00e${thisTrack} -`)
+            fs.writeFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), JSON.stringify({ track }))
+            https.get(info.query.thumbnails[0].url, (res) => {
+                let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
+                res.pipe(stream)
+                stream.on("finish", () => {
+                    stream.close()
+                })
+            })
+        } else {
+            info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", "Mixed") + path.sep).replace("${replace_title} ", '' /* `${thisTrack} -` */)
+            fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), JSON.stringify({ track }))
+        }
+        if (fs.existsSync(info.output)) {
+            info.output = info.output.replace(".mp3", " (alternate).mp3").replace(".mp4", " (alternate).mp4")
+            info.title += " (alternate)"
+        } else {
+            fs.writeFileSync(info.output, "Checker File")
+        }
+        nextevent.once(`startdl_${info.id}`, () => {
+            downloading++
+            let vidDone = false
+            let audioDone = false
+            let videoFile: fs.WriteStream
+            let videoStream: import("stream").Readable
+            try {
+                if (!audioOnly) {
+                    videoFile = fs.createWriteStream(info.video, { autoClose: true })
+                    videoStream = ytdl(link, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestvideo" })
+                }
+                let audioFile = fs.createWriteStream(info.audio, { autoClose: true })
+                let audioStream = ytdl(link, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestaudio" })
+                let finsh = () => {
+                    nextevent.emit("donedl")
+                    downloading--
+                    processing++
+                    ev.sender.send("result", `Processing ${info.title}`)
+                    try {
+                        let date = dayjs()
+                        fs.appendFileSync(path.resolve(eapp.getPath("userData"), "ffmpeg.log"), `${info.title} started at ${date.format("DD/MM/YYYY HH:mm:ss")}\n`)
+                        let ffmpegLog = fs.createWriteStream(path.resolve(eapp.getPath("userData"), "ffmpeg", `${info.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.log`), { autoClose: true, flags: 'a+' })
+                        let ffmpeg: cp.ChildProcess
+                        if (audioOnly) {
+                            // console.log(title)
+                            ffmpeg = cp.spawn(ffmpegPath, [
+                                '-i', `${info.audio}`,
+                                '-map', '0:a',
+                                '-c:a', 'mp3',
+                                '-metadata', `title=${title}`,
+                                '-metadata', `artist=${info.query.author.name || "No Artist"}`,
+                                '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
+                                '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
+                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
+                                '-metadata', `performer=${info.query.author.name || "No Performer"}`, //.replaceAll("'", '')
+                                '-metadata', `genre=YoutTube Video`,
+                                '-metadata', `album_artist=Various Artists`,
+                                '-metadata', `track=${info.track}`,
+                                '-metadata', `disc=1`,
+                                '-metadata', `album=Mixed`,
+                                "-y",
+                                // `comment="${info.query.description?.replaceAll('"', '').replaceAll("'", '') || "No Description"}"`,
+                                info.output
+                            ], {
+                                shell: false,
+                            })
+                        } else {
+                            ffmpeg = cp.spawn(ffmpegPath, [
+                                '-i', info.video,
+                                '-i', info.audio,
+                                '-i', info.thumbnail,
+                                '-map', '0:v',
+                                '-c:v:0', 'copy',
+                                '-map', '1:a',
+                                '-c:a:0', 'aac',
+                                '-map', '2:v',
+                                '-c:v:1', 'mjpeg',
+                                '-disposition:v:1', 'attached_pic',
+                                '-metadata', `title=${title}`,
+                                '-metadata', `artist=${info.query.author.name || "No Artist"}`,
+                                '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
+                                '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
+                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
+                                '-metadata', `performer=${info.query.author.name || "No Performer"}`, //.replaceAll("'", '')
+                                '-metadata', `album=Mixed`,
+                                '-metadata', `track=${info.track}`,
+                                '-metadata', `disc=1`,
+                                "-y",
+                                // ` comment="${info.query.description?.replaceAll('"', '').replaceAll("'", '') || "No Description"}"`,
+                                info.output
+                            ], {
+                                shell: false,
+                            })
+                        }
+                        ffmpeg.on("error", () => { ffmpegLog.write(onError) })
+                        ffmpeg.stderr.pipe(ffmpegLog, { end: true })
+                        ffmpeg.stderr.pipe(process.stderr, { end: true })
+                        ffmpeg.stdout.pipe(ffmpegLog, { end: true })
+                        ffmpeg.stdout.pipe(process.stdout, { end: true })
+                        ffmpeg.on("exit", () => {
+                            ffmpegLog.close()
+                            if (!audioOnly) {
+                                fs.rmSync(info.video)
+                                fs.rmSync(info.thumbnail)
+                            }
+                            fs.rmSync(info.audio)
+                            ev.sender.send("result", `${info.title} Done`)
+                            // console.log("Done")
+                            nextevent.emit("doneproc")
+                            processing--
+                            // eapp.quit()
+                        })
+                    } catch {
+                        ev.sender.send("error", `Error Downloading: ${info.title}`)
+                        return `Error Downloading: ${info.title}`
+                    }
+                }
+                let checkAndCloseAudio = () => {
+                    // console.log("audio done")
+                    if (vidDone || audioOnly) {
+                        nextevent.once(`startproc_${info.id}`, finsh)
+                        if (processing < config.concurent_process) {
+                            nextevent.emit(`startproc_${info.id}`)
+                        } else {
+                            procqueue.push(info.id)
+                        }
+                    } else if (!audioDone) {
+                        audioFile.close()
+                        audioDone = true;
+                    }
+                }
+                let checkAndCloseVideo = () => {
+                    // console.log("video done")
+                    if (audioDone) {
+                        nextevent.once(`startproc_${info.id}`, finsh)
+                        if (processing < config.concurent_process) {
+                            nextevent.emit(`startproc_${info.id}`)
+                        } else {
+                            procqueue.push(info.id)
+                        }
+                    } else if (!vidDone) {
+                        videoFile.close()
+                        vidDone = true;
+                    }
+                }
+                audioFile.on("finish", checkAndCloseAudio)
+                audioStream.pipe(audioFile, { end: true })
+                if (!audioOnly) {
+                    videoFile.on("finish", checkAndCloseVideo)
+                    videoStream.pipe(videoFile, { end: true })
+                }
+            } catch (err) {
+                onError(err)
+            }
+        })
+        if (downloading < config.concurent_dl) {
+            nextevent.emit(`startdl_${info.id}`)
+        } else {
+            dlqueue.push(info.id)
         }
     } else {
         ev.sender.send("error", `${link} is not a valid video`)
