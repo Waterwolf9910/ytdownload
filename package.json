@@ -21,7 +21,8 @@
     },
     "main": "dist/index.js",
     "scripts": {
-        "build": "yarn tsc"
+        "build": "node -e \"fs.mkdirSync('./build', { recursive: true })\" && yarn tsc && electron-builder -c builder.config.js",
+        "electron-builder": "node -e \"fs.mkdirSync('./build', { recursive: true })\" && electron-builder"
     },
     "devDependencies": {
         "@types/express": "^4.17.13",

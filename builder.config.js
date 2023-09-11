@@ -3,6 +3,8 @@ let path = require("path")
 let fs = require("fs")
 let appConfig = require("./package.json")
 
+fs.rmSync(path.resolve("./build"), { recursive: true })
+fs.mkdirSync(path.resolve("./build"), { recursive: true })
 fs.copyFileSync(path.resolve(".pnp.cjs"), path.resolve("dist", ".pnp.cjs"))
 fs.copyFileSync(path.resolve(".pnp.loader.mjs"), path.resolve("dist", ".pnp.loader.mjs"))
 
@@ -47,7 +49,6 @@ let config = {
         license: path.resolve(__dirname, "LICENSE")
     },
     buildDependenciesFromSource: true,
-    remoteBuild: false,
     files: [
         "**/*",
         "!build${/*}",
@@ -164,3 +165,15 @@ let config = {
 }
 
 module.exports = config;
+
+let _icoinv = setInterval(() => {
+    let icon = path.resolve("build/${os}/${version}/${arch}/.icon-ico/icon.ico")
+    let location = icon.replace('${version}', appConfig.version)
+    if (fs.existsSync(icon) && !fs.existsSync(location)) {
+        if (fs.statSync(icon).size > 10) {
+            fs.mkdirSync(path.dirname(location), { recursive: true })
+            fs.copyFileSync(icon, location)
+            clearInterval(_icoinv)
+        }
+    }
+})
