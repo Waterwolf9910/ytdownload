@@ -166,14 +166,16 @@ let config = {
 
 module.exports = config;
 
-let _icoinv = setInterval(() => {
-    let icon = path.resolve("build/${os}/${version}/${arch}/.icon-ico/icon.ico")
-    let location = icon.replace('${version}', appConfig.version)
-    if (fs.existsSync(icon) && !fs.existsSync(location)) {
-        if (fs.statSync(icon).size > 10) {
-            fs.mkdirSync(path.dirname(location), { recursive: true })
-            fs.copyFileSync(icon, location)
-            clearInterval(_icoinv)
+if (process.platform == "win32") {
+    let _icoinv = setInterval(() => {
+        let icon = path.resolve("build/${os}/${version}/${arch}/.icon-ico/icon.ico")
+        let location = icon.replace('${version}', appConfig.version)
+        if (fs.existsSync(icon) && !fs.existsSync(location)) {
+            if (fs.statSync(icon).size > 10) {
+                fs.mkdirSync(path.dirname(location), { recursive: true })
+                fs.copyFileSync(icon, location)
+                clearInterval(_icoinv)
+            }
         }
-    }
-})
+    })
+}
