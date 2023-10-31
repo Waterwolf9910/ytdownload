@@ -2,11 +2,10 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build 1",
+            "label": "Build",
             "type": "shell",
-            "command": "yarn",
+            "command": "yarn tsc && yarn webpack -c webpack.config.json",
             "args": [
-                "tsc",
             ],
             "problemMatcher": [
                 "$tsc"

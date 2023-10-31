@@ -8,17 +8,17 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Main",
             "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-26.2.0-af7dba36e6/node_modules/electron/dist/electron",
             "windows": {
                 "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-26.2.0-af7dba36e6/node_modules/electron/dist/electron.exe"
             },
-            // "runtimeExecutable": "yarn",
+            "program": "${workspaceFolder}/dist/index.js",
             "args": [
-                // "electron",
+                "--remote-debugging-port=9222",
                 "."
             ],
-            "preLaunchTask": "build 1",
+            "preLaunchTask": "npm: prepareDebug",
             "outputCapture": "std",
             "sourceMaps": true,
             "skipFiles": [
@@ -27,12 +27,24 @@
                 "${workspaceFolder}/.pnp.cjs",
                 "${workspaceFolder}/.pnp.loader.mjs",
             ],
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "serverReadyAction":{
+                "action": "startDebugging",
+                "name": "Renderer",
+                "pattern": "webpack [0-9.]+ compiled successfully",
+                "killOnServerStop": false
+            },
             "console": "integratedTerminal",
             "autoAttachChildProcesses": true,
-            // "program": "${workspaceFolder}/dist/index.js",
-            // "outFiles": [
-            //     "${workspaceFolder}/**/*.js"
-            // ]
+        },
+        {
+            "name": "Renderer",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}/static_src"
         }
     ]
 }

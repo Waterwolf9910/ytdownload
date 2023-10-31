@@ -1,0 +1,143 @@
+@use "../bootstrap-icons-1.11.1/bootstrap-icons.scss" with (
+    $bootstrap-icons-font-dir: "../bootstrap-icons-1.11.1/fonts"
+);
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+@import "bootstrap/scss/helpers";
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/card";
+@import "bootstrap/scss/buttons";
+
+textarea {
+    resize: none;
+    margin: 5px;
+}
+
+body * > div {
+    margin-bottom: 2px;
+}
+
+footer {
+    position: fixed;
+    bottom: 0px;
+    left: 0px;
+    width: 100%;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: -1;
+    progress {
+        width: 500px;
+        height: 27px;
+    }
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+}
+
+#check {
+    top: 6px;
+    left: 10px;
+}
+
+
+main {
+    flex-grow: .5;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    > * {
+        margin: 0 auto;
+    }
+    .col {
+        padding-bottom: 30px;
+    }
+}
+
+html,body,#root {
+    height: 100%;
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+div:has(> #custom_regexp) {
+    display: flex;
+    justify-content: space-around;
+}
+
+button,input[type="button"]:not(:disabled) {
+    cursor: pointer;
+}
+
+* {
+    text-align: center;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+}
+
+.center_items {
+    align-items: center;
+    justify-content: center;
+}
+
+.small_number {
+    width: 35px;
+}
+
+.log {
+    height: 100px;
+    width: 184px;
+}
+
+.url_div {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.options {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+}
+
+pre {
+    display: inline-block;
+}
+
+.card {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    border-width: 0;
+}
+
+.card-body {
+    * {
+        text-align: left;
+    }
+    padding: 0px var(--bs-card-spacer-x);
+}
+
+.input-group {
+    margin-top: 15px;
+}

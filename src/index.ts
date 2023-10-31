@@ -12,7 +12,7 @@ let orequire = Module.prototype.require
 //@ts-ignore
 Module.prototype.require = function () {
     // eslint-disable-next-line prefer-rest-params
-    if (arguments[0] == "electron") {
+    if (arguments[0].startsWith("electron")) {
         return electron;
     }
     // eslint-disable-next-line prefer-rest-params
@@ -30,6 +30,7 @@ import express = require("express")
 import dayjs = require("dayjs")
 import _random = require("./libs/random")
 import events = require("events")
+import os = require('os')
 import updater = require("electron-updater")
 // import _eaa = require("electron-updater/out/ElectronAppAdapter")
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -118,11 +119,13 @@ fs.mkdirSync(path.resolve(eapp.getPath("userData"), "ffmpeg"), { recursive: true
 let config: {
     output: string,
     concurent_dl: number,
-    concurent_process: number
+    concurent_process: number,
+    theme: "light" | "dark"
 } = {
     concurent_dl: 5, //Infinity,
-    concurent_process: 5,
-    output: path.resolve(eapp.getPath("desktop"), "./media")
+    concurent_process: os.cpus().length,
+    output: path.resolve(eapp.getPath("desktop"), "./media"),
+    theme: "dark"
 }
 // fs.mkdirSync(path.resolve(out, "Music", "Various Artists"), { recursive: true })
 // fs.mkdirSync(path.resolve(out, "TV Shows"), { recursive: true })
@@ -150,8 +153,8 @@ type infoVid = {
     query: ytdl.VideoDetails
 }
 
-electron.ipcMain.handle("getpl", async (ev, link, audioOnly = true, reversePL = false, removeExtras = false, customRegExp: string[] = []) => {
-    let list: { title: string, query: ytpl.Item }[] = []
+electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, customRegExp: string[] = []) => {
+    let items: { title: string, query: ytpl.Item }[] = []
     let pl: ytpl.Result
     try {
         pl = await ytpl(link, { limit: Infinity })
@@ -169,10 +172,8 @@ electron.ipcMain.handle("getpl", async (ev, link, audioOnly = true, reversePL = 
     for (let query of pl.items) {
         let title = query.title
         for (let regexp of customRegExp) {
-            // console.log(customRegExp)
-            // new RegExp(new RegExp(regexp), "g")
             try {
-                let rex = new RegExp(regexp, "g")
+                let rex = new RegExp(regexp)
                 title = title.replace(rex, '')
             } catch (err) {
                 ev.sender.send("error", "Invalid Regular Expression")
@@ -181,16 +182,15 @@ electron.ipcMain.handle("getpl", async (ev, link, audioOnly = true, reversePL = 
             }
             // console.log(rex, title)
         }
-        list.push({ title, query })
+        items.push({ title, query })
     }
 
     if (reversePL) {
-        list.reverse()
+        items.reverse()
     }
 
-    selWin.show()
-    selWin.webContents.send("selector", { audioOnly, removeExtras, list, title: pl.title, url: pl.url })
-    mainWin.minimize()
+    ev.sender.send("selector", { items, title: pl.title, url: pl.url })
+    // mainWin.minimize()
 })
 
 let downloading = 0
@@ -240,17 +240,15 @@ nextevent.on("doneproc", () => {
     // console.log("pq", processing, procqueue)
 })
 
-electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean, removeExtras: boolean, title: string }) => {
+electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean, title: string }) => {
     nextevent.setLock()
-    selWin.hide()
-    mainWin.restore()
     console.log("Starting pl dl")
     mainWin.webContents.send("result", "Downloading Playlist")
     if (data.audioOnly) {
-        data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/[ ]+/g, ' ')
+        data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')
         fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", data.title), { recursive: true })
     } else {
-        data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/[ ]+/g, ' ')
+        data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')
         fs.mkdirSync(path.resolve(config.output, "TV Shows", data.title, "Season 00"), { recursive: true })
     }
     // console.log(data.removeExtras)
@@ -258,7 +256,7 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
         let thisId = id++
         let query = data.info[ i ].query
         let thisTrack = `${i + 1}`
-        if (thisTrack[ 0 ] !== "0") {
+        if (!thisTrack.startsWith("0")) {
             thisTrack = `0${thisTrack}`
         }
         let info: infoPL = {
@@ -266,8 +264,8 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
             video: path.resolve(temp, `${thisId}_video.mp4`),
             audio: path.resolve(temp, `${thisId}_audio.mp4`),
             thumbnail: path.resolve(temp, `${thisId}_thumbnail.jpeg`),
-            output: path.join('${dir}', `\${replace_title}${data.info[ i ].title.replaceAll("w/", 'with').replace(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/[ ]+/g, ' ')}.${data.audioOnly ? "mp3" : "mp4"}`),
-            title: data.info[ i ].title.replace(/\.$/, '').replaceAll(/[ ]+/g, ' '),
+            output: path.join('${dir}', `\${replace_title}${data.info[ i ].title.replaceAll("w/", 'with').replace(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')}.${data.audioOnly ? "mp3" : "mp4"}`),
+            title: data.info[ i ].title.replace(/\.$/, '').replaceAll(/ +/g, ' '),
             track: i + 1,
             query,
         }
@@ -277,7 +275,7 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                 return `Error Downloading: ${info.title}`
             }
         }
-        info.output = data.removeExtras ? info.output.replace(/[0-9]+\.\(\)\?/g, '').replace(/\( \)?\([A-z0-9 ]+\)/g, '') : info.output
+        // info.output = data.removeExtras ? info.output.replace(/[0-9]+\.\(\)\?/g, '').replace(/\( \)?\([A-z0-9 ]+\)/g, '') : info.output
         fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
         if (!data.audioOnly) {
             info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", data.title, "Season 00") ).replace("${replace_title}", `S00e${thisTrack} - `)
@@ -451,11 +449,7 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
     }
 })
 
-electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, removeExtras = false, customRegExp: string[] = []) => {
-    selWin.hide()
-    mainWin.restore()
-    // console.log("starting vid dl")
-    // console.log(await ytsr(link), link)
+electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, customRegExp: string[] = []) => {
     if (ytdl.validateURL(link)) {
         let query = (await ytdl.getInfo(link)).videoDetails
         let thisId = id++
@@ -475,7 +469,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
             track = fs.existsSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 1;
         }
         let thisTrack = `${++track}`
-        if (thisTrack[ 0 ] !== "0") {
+        if (thisTrack.startsWith("0")) {
             thisTrack = `0${thisTrack}`
         }
         let title = query.title.replace(/\.$/, '')
@@ -506,7 +500,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
                 return `Error Downloading: ${info.title}`
             }
         }
-        info.output = removeExtras ? info.output.replace(/[0-9]+\. /g, '').replace(/ \([A-z0-9 ]+\)/g, '') : info.output
+        // info.output = removeExtras ? info.output.replace(/[0-9]+\. /g, '').replace(/ \([A-z0-9 ]+\)/g, '') : info.output
         fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
         // console.log("hi", info.id)
         if (!audioOnly) {
@@ -678,7 +672,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, rem
 
 electron.ipcMain.handle("valid", (ev, link: string) => {
     try {
-        return ytpl.validateID(link) ? "pl" : ytdl.validateURL(link) ? true : false
+        return ytpl.validateID(link) ? "pl" : ytdl.validateURL(link)
     } catch (err) {
         return false
     }
@@ -719,7 +713,16 @@ electron.ipcMain.handle("set_concurrency", (ev, dl: number | "infinity" = 5, pro
     // console.log(config, isNaN(parseInt(dl)), isNaN(parseInt(proc)))
 
     fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, (_key, val) => (val == Infinity ? "infinity" : val), 4))
+    nextevent.setMaxListeners(config.concurent_process + config.concurent_dl + 7)
     return "Values Set\n"
+})
+
+electron.ipcMain.handle("theme", (ev, theme?: "light" | "dark") => {
+    if (theme) {
+        config.theme = theme;
+        fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, (_key, val) => (val == Infinity ? "infinity" : val), 4))
+    }
+    return config.theme
 })
 
 let close = () => {
@@ -795,33 +798,81 @@ let startServer = (): number => {
     }
 }
 
-app.all("*", (req, res, next) => {
-    res.removeHeader("x-powered-by")
-    next()
-})
-app.use(express.static(path.resolve(__dirname, "static"), { dotfiles: 'ignore', extensions: [ 'html' ] }))
 app.disable("x-powered-by")
 
+if (!eapp.isPackaged) {
+    /* eslint-disable @typescript-eslint/no-var-requires */
+    let webpack: typeof import("webpack") = require("webpack")
+    let wpdm: typeof import("webpack-dev-middleware") = require("webpack-dev-middleware")
+    let wphm: typeof import("webpack-hot-middleware") = require("webpack-hot-middleware")
+    let wpconfig: import("webpack").Configuration = require("../webpack.config")
+    /* eslint-enable @typescript-eslint/no-var-requires */
+    let compiler = webpack(wpconfig)
+    app.use(wpdm(compiler, {
+        // methods: "GET",
+        index: true,
+        serverSideRender: true,
+        writeToDisk: false
+    }))
+    app.use(wphm(compiler, {
+        path: '/__hmr'
+    }))
+}
+
+app.all("*", (req, res, next) => {
+    res.removeHeader("x-powered-by")
+    if (eapp.isPackaged) {
+        return next()
+    }
+    let wpmw: import('webpack-dev-middleware').Context<import('http').IncomingMessage, import('http').ServerResponse & import("webpack-dev-middleware").ExtendedServerResponse> = res.locals.webpack.devMiddleware
+    if (!wpmw.state) {
+        return res.status(500).send("<p>Not done loading</p>")
+    }
+    wpmw.outputFileSystem.readdir(path.join(wpmw.stats.toJson().outputPath), (err) => {
+        if (err) {
+            return res.send(err)
+        }
+
+        if (req.path.includes("/outPath")) {
+            //@ts-ignore
+            return res.send(wpmw.outputFileSystem.readdirSync(wpmw.stats.toJson().outputPath))
+        }
+
+        wpmw.outputFileSystem.readFile(path.resolve(wpmw.stats.toJson().outputPath, path.normalize(`./${req.path}`)), (err2, data) => {
+            if (!err2) {
+                return res.send(data)
+            }
+
+            if (path.basename(req.path).match(/^([^./\\*"<>:|? ]+)(\.[^/\\*"<>:|?.]+)+$/)) {
+                return res.status(404).end()
+            }
+            try {
+                res.send(wpmw.outputFileSystem.readFileSync(path.join(wpmw.stats.toJson().outputPath, "index.html"), { encoding: 'utf-8' }))
+            } catch {
+                res.status(500).send("Internal Error")
+            }
+        })
+        // res.send("Hello World")
+    })
+
+})
+
+app.use(express.static(path.resolve(__dirname, "static"), { dotfiles: 'ignore', extensions: [ 'html' ] }))
+
 let mainWin: electron.BrowserWindow
-let selWin: electron.BrowserWindow
 eapp.on("window-all-closed", close)
 
 eapp.whenReady().then(() => {
     console.log("Started!")
     console.log(config)
     if (fs.existsSync(path.resolve(eapp.getPath("userData"), "config.json"))) {
-        config = JSON.parse(fs.readFileSync(path.resolve(eapp.getPath("userData"), "config.json"), { encoding: 'utf-8' }), (_key, val) => (val == "infinity" ? Infinity : val))
+        config = {...config, ...JSON.parse(fs.readFileSync(path.resolve(eapp.getPath("userData"), "config.json"), { encoding: 'utf-8' }), (_key, val) => (val == "infinity" ? Infinity : val))}
     } else {
         fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, null, 4))
     }
     console.log(config)
     port = startServer()
     mainWin = createWin(`http://localhost:${port}`, path.resolve(__dirname, "preloads", "index.js"))
-    selWin = createWin(`http://localhost:${port}/select`, path.resolve(__dirname, "preloads", "select.js"), false)
-    selWin.removeAllListeners("close")
-    selWin.on("close", (e) => {
-        selWin.hide()
-        e.preventDefault()
-    })
-    autoUpdater.checkForUpdates()
+    autoUpdater.checkForUpdates().catch((e => null))
+    nextevent.setMaxListeners(config.concurent_process + config.concurent_dl + 7)
 })/* .then(mainVid) */

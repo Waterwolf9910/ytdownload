@@ -1,69 +1,90 @@
-import electron = require("electron")
-let listeners = []
-let errListeners = []
-let dLListeners = []
+import electron = require("electron/renderer")
+let logListener: (val) => null = () => null
+let errListener: (val) => null = () => null
+let dLListeners: (val) => null = () => null
+let plListener: (val) => null = () => null
+let resultListener: (val) => null = () => null
 
 electron.ipcRenderer.on("result", (_, msgType) => {
-    for (let listenerFunc of listeners) {
-        listenerFunc(msgType)
-    }
+    logListener(msgType)
 })
 
 electron.ipcRenderer.on("error", (_, errorType) => {
-    for (let listenerFunc of errListeners) {
-        listenerFunc(errorType)
-    }
+    errListener(errorType)
 })
 
 electron.ipcRenderer.on("update", (_, info) => {
-    for (let listenerFunc of dLListeners) {
-        listenerFunc(info)
-    }
+    dLListeners(info)
 })
+
+electron.ipcRenderer.on("selector", (ev, data) => {
+    plListener(data)
+})
+
+electron.ipcRenderer.on("result", (ev, data) => {
+    resultListener(data)
+})
+
 
 let concurrency = (param1, param2) => {
     return electron.ipcRenderer.invoke("set_concurrency", param1, param2)
 }
 
-let addResultListener = (listenerFunc) => {
-    listeners.push(listenerFunc)
+let setLogListener = (listenerFunc) => {
+    logListener = listenerFunc
 }
 
-let addErrorListener = (listenerFunc) => {
-    errListeners.push(listenerFunc)
+let setErrorListener = (listenerFunc) => {
+    errListener = listenerFunc
 }
 
-let addDLListener = (listenerFunc) => {
-    dLListeners.push(listenerFunc)
+let setDLListener = (listenerFunc) => {
+    dLListeners = listenerFunc
 }
 
-let dlRequest = (param1, param2, param3, param4, param5) => {
-    electron.ipcRenderer.invoke("getpl", param1, param2, param3, param4, param5)
+let setResultListener = (listenerFunc) => {
+    resultListener = listenerFunc
 }
 
-let sendToDL = (param1, param2, param3, param4) => {
+let plRequest = (param1, param2, param3) => {
+    electron.ipcRenderer.invoke("getpl", param1, param2, param3)
+}
+
+let downloadVid = (param1, param2, param3, param4) => {
     electron.ipcRenderer.invoke("dlvid", param1, param2, param3, param4)
 }
+
 
 let selectOutput = () => {
     electron.ipcRenderer.invoke("choose_output")
 }
 
-let valid = async (param1) => {
+let valid = (param1) => {
     return electron.ipcRenderer.invoke("valid", param1)
 }
 
-let main = async () => {
-    electron.contextBridge.exposeInMainWorld("api", {
-        addResultListener,
-        addErrorListener,
-        addDLListener,
-        concurrency,
-        dlRequest,
-        sendToDL,
-        selectOutput,
-        valid
-    })
+let theme = (theme = null) => {
+    return electron.ipcRenderer.invoke("theme", theme)
+}
+let downloadPl = (param1, param2, param3) => {
+    electron.ipcRenderer.invoke("dlpl", { info: param1, audioOnly: param2, title: param3 })
 }
 
-main()
+let setPLListener = (listenerFunc) => {
+    plListener = listenerFunc
+}
+
+electron.contextBridge.exposeInMainWorld("api", {
+    setLogListener,
+    setErrorListener,
+    setResultListener,
+    setDLListener,
+    setPLListener,
+    concurrency,
+    plRequest,
+    downloadVid,
+    downloadPl,
+    selectOutput,
+    valid,
+    theme
+})
