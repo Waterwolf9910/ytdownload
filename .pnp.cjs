@@ -2070,7 +2070,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "source-map",\
-      "npm:0.6.1"\
+      "npm:0.7.4"\
     ],\
     [\
       "source-map-js",\
@@ -2193,6 +2193,10 @@ const RAW_RUNTIME_STATE =
     [\
       "ts-api-utils",\
       "virtual:83add7c63d0bdafdb07e639fd88924f340fdac880d244e189efb0ae11637a16959adf2a2e69187ad9b708ffd35c1d30527c6ee9d989e25261157e8006b29a975#npm:1.0.3"\
+    ],\
+    [\
+      "ts-loader",\
+      "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:9.5.0"\
     ],\
     [\
       "tslib",\
@@ -2397,6 +2401,7 @@ const RAW_RUNTIME_STATE =
           ["sass", "npm:1.69.5"],\
           ["sass-loader", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:13.3.2"],\
           ["terser-webpack-plugin", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:5.3.9"],\
+          ["ts-loader", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:9.5.0"],\
           ["typescript", "patch:typescript@npm%3A5.2.2#optional!builtin<compat/typescript>::version=5.2.2&hash=f3b441"],\
           ["webpack", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:5.89.0"],\
           ["webpack-cli", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:5.1.4"],\
@@ -9223,6 +9228,37 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["ts-loader", [\
+      ["npm:9.5.0", {\
+        "packageLocation": "./.yarn/cache/ts-loader-npm-9.5.0-9514617263-8ffc6411ec.zip/node_modules/ts-loader/",\
+        "packageDependencies": [\
+          ["ts-loader", "npm:9.5.0"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:9.5.0", {\
+        "packageLocation": "./.yarn/__virtual__/ts-loader-virtual-304609cd60/0/cache/ts-loader-npm-9.5.0-9514617263-8ffc6411ec.zip/node_modules/ts-loader/",\
+        "packageDependencies": [\
+          ["ts-loader", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:9.5.0"],\
+          ["@types/typescript", null],\
+          ["@types/webpack", null],\
+          ["chalk", "npm:4.1.2"],\
+          ["enhanced-resolve", "npm:5.15.0"],\
+          ["micromatch", "npm:4.0.5"],\
+          ["semver", "npm:7.5.4"],\
+          ["source-map", "npm:0.7.4"],\
+          ["typescript", "patch:typescript@npm%3A5.2.2#optional!builtin<compat/typescript>::version=5.2.2&hash=f3b441"],\
+          ["webpack", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:5.89.0"]\
+        ],\
+        "packagePeers": [\
+          "@types/typescript",\
+          "@types/webpack",\
+          "typescript",\
+          "webpack"\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
     ["tslib", [\
       ["npm:2.6.2", {\
         "packageLocation": "./.yarn/cache/tslib-npm-2.6.2-4fc8c068d9-bd26c22d36.zip/node_modules/tslib/",\
@@ -9782,6 +9818,7 @@ const RAW_RUNTIME_STATE =
           ["sass", "npm:1.69.5"],\
           ["sass-loader", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:13.3.2"],\
           ["terser-webpack-plugin", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:5.3.9"],\
+          ["ts-loader", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:9.5.0"],\
           ["typescript", "patch:typescript@npm%3A5.2.2#optional!builtin<compat/typescript>::version=5.2.2&hash=f3b441"],\
           ["webpack", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:5.89.0"],\
           ["webpack-cli", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:5.1.4"],\
