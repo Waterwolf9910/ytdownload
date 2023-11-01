@@ -3,6 +3,8 @@ import utils = require("./utils")
 import Video = require("./components/video")
 let valid = false
 let isPL = false
+let logs_list: string[] = []
+let errors_list: string[] = []
 
 let page = () => {
     let [selected_tab, set_tab] = react.useState(0)
@@ -65,7 +67,6 @@ let page = () => {
             reverse.current!.disabled = true
             check.current!.style.backgroundColor = "red"
             valid = false
-            // console.log(err)
         }
     }
 
@@ -92,11 +93,17 @@ let page = () => {
     react.useEffect(() => {
         window.api.setLogListener((data) => {
             // alert(data)
-            logs.current!.value += `${data}\n`
+            logs_list.push(data)
+            if (selected_tab == 0) {
+                logs.current!.value += `${data}\n`
+            }
         })
 
         window.api.setErrorListener(data => {
-            err.current!.value += `${data}\n`
+            errors_list.push(data)
+            if (selected_tab == 0) {
+                err.current!.value += `${data}\n`
+            }
         })
 
         window.api.setDLListener(_info => {
@@ -171,8 +178,8 @@ let page = () => {
                     </div>
                 </div>
                 <div className="row center_items">
-                    <textarea title="_test" id="logs" readOnly wrap="soft" className="log" style={{ cursor: "context-menu" }} />
-                    <textarea title="_test" id="errors" readOnly wrap="soft" className="log" style={{ cursor: "context-menu" }} />
+                    <textarea title="_test" id="logs" readOnly wrap="soft" className="log" style={{ cursor: "context-menu" }} ref={logs} value={logs_list.join("\n") + "\n"}/>
+                    <textarea title="_test" id="errors" readOnly wrap="soft" className="log" style={{ cursor: "context-menu" }} ref={err} value={errors_list.join("\n") + "\n"}/>
                 </div>
             </>
             break;
@@ -185,7 +192,7 @@ let page = () => {
             let videos: JSX.Element[] = []
             let id = 0;
             for (let video of video_list) {
-                videos.push(<Video data={{...video.query, title: video.title, eid: id++}} clickDelete={e => {
+                videos.push(<Video key={id} data={{...video.query, title: video.title, eid: id++}} clickDelete={e => {
                     set_videos(video_list.filter(e => e.title != video.title))
                 }}/>)
             }
@@ -227,7 +234,11 @@ let page = () => {
                 </div>
                 <div className="row center_items">
                     <input type="button" value="Change" onClick={async () => {
-                        logs.current!.value += await window.api.concurrency(dl.current!.value, proc.current!.value)
+                        let value = await window.api.concurrency(dl.current!.value, proc.current!.value)
+                        logs_list.push(value)
+                        if (selected_tab == 0) {
+                            logs.current!.value += `${value}\n`
+                        }
                     }}/>
                 </div>
             </div>

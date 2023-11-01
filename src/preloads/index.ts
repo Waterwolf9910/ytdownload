@@ -3,9 +3,8 @@ let logListener: (val) => null = () => null
 let errListener: (val) => null = () => null
 let dLListeners: (val) => null = () => null
 let plListener: (val) => null = () => null
-let resultListener: (val) => null = () => null
 
-electron.ipcRenderer.on("result", (_, msgType) => {
+electron.ipcRenderer.on("log", (_, msgType) => {
     logListener(msgType)
 })
 
@@ -19,10 +18,6 @@ electron.ipcRenderer.on("update", (_, info) => {
 
 electron.ipcRenderer.on("selector", (ev, data) => {
     plListener(data)
-})
-
-electron.ipcRenderer.on("result", (ev, data) => {
-    resultListener(data)
 })
 
 
@@ -40,10 +35,6 @@ let setErrorListener = (listenerFunc) => {
 
 let setDLListener = (listenerFunc) => {
     dLListeners = listenerFunc
-}
-
-let setResultListener = (listenerFunc) => {
-    resultListener = listenerFunc
 }
 
 let plRequest = (param1, param2, param3) => {
@@ -77,7 +68,6 @@ let setPLListener = (listenerFunc) => {
 electron.contextBridge.exposeInMainWorld("api", {
     setLogListener,
     setErrorListener,
-    setResultListener,
     setDLListener,
     setPLListener,
     concurrency,

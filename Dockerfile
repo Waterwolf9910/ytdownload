@@ -1,16 +1,18 @@
-FROM ubuntu:latest
+FROM ubuntu:focal
 
 WORKDIR /source
 
 SHELL ["/bin/bash", "-c"]
 
-# RUN alias sudo=""
+RUN apt-get update && apt upgrade -y && apt-get install -y ca-certificates curl gnupg
+RUN mkdir -p /etc/apt/keyrings
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
 
-RUN apt update && apt upgrade && apt install curl -y
+RUN NODE_MAJOR=20 echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
 
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+RUN apt update && apt install -y nodejs libtool build-essential libc6 libstdc++6 libopenjp2-tools rpm libnotify-dev libxtst-dev libnss3-dev libavcodec-dev libavformat-dev
 
-RUN apt install -y nodejs libtool build-essential libc6 libstdc++6 libopenjp2-tools rpm libnotify-dev libxtst-dev libnss3-dev libavcodec-dev libavformat-dev
+RUN apt clean
 
 RUN corepack enable yarn
 

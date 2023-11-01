@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // process.env.ELECTRON_ENABLE_LOGGING='true'
 import electron = require("electron")
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-// require("../.pnp.cjs").setup()
 import path = require("path")
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 electron.app.isPackaged ? require(path.resolve(process.resourcesPath, ".pnp.cjs")).setup() : require("../.pnp.cjs").setup()
@@ -26,15 +24,11 @@ import https = require("https")
 import ytdl = require("@distube/ytdl-core")
 import ytpl = require("ytpl")
 import express = require("express")
-// import url = require("url")
 import dayjs = require("dayjs")
 import _random = require("./libs/random")
 import events = require("events")
 import os = require('os')
 import updater = require("electron-updater")
-// import _eaa = require("electron-updater/out/ElectronAppAdapter")
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-// let build_config: import("electron-builder").Configuration = require("./config.js")
 
 let eapp = electron.app
 //@ts-ignore
@@ -43,19 +37,6 @@ let random = new _random(4, 9)
 let app = express()
 
 let autoUpdater: typeof updater.autoUpdater = updater.autoUpdater
-// let eaa = new _eaa.ElectronAppAdapter(eapp)
-
-/* if (process.platform == "win32") {
-    
-    //@ts-ignore
-    autoUpdater = new updater.NsisUpdater(build_config.publish, eaa)
-} else if (process.platform == "darwin") {
-    //@ts-ignore
-    autoUpdater = new updater.MacUpdater(build_config.publish, eaa)
-} else {
-    //@ts-ignore
-    autoUpdater = new updater.AppImageUpdater(build_config.publish, eaa)
-} */
 
 autoUpdater.autoRunAppAfterInstall = false
 autoUpdater.autoDownload = false
@@ -89,31 +70,12 @@ autoUpdater.on("update-downloaded", async () => {
 })
 
 autoUpdater.on("download-progress", async (info) => {
-    // console.log(info)
-    // fs.appendFileSync(path.resolve(eapp.getPath("home"), "a.txt"), JSON.stringify(info) + "\n")
     mainWin.webContents.send("update", JSON.stringify(info))
 })
 
-/* autoUpdater.on("error", data => {
-    console.error(data)
-    fs.appendFileSync(path.resolve(eapp.getPath("home"), "a.txt"), JSON.stringify(data) + "\n")
-})
-
-autoUpdater.on("update-not-available", info => {
-    console.log(info)
-    fs.appendFileSync(path.resolve(eapp.getPath("home"), "a.txt"), JSON.stringify(info) + "\n")
-})
-
-autoUpdater.on("update-cancelled", info => {
-    console.log(info)
-    fs.appendFileSync(path.resolve(eapp.getPath("home"), "a.txt"), JSON.stringify(info) + "\n")
-}) */
-
 autoUpdater.on("checking-for-update", () => {
     console.log("Checking")
-    // fs.appendFileSync(path.resolve(eapp.getPath("home"), "a.txt"), "Checking\n")
 })
-// console.log(eapp)
 let temp = path.resolve(eapp.getPath("userData"), "./temp")
 fs.mkdirSync(path.resolve(eapp.getPath("userData"), "ffmpeg"), { recursive: true })
 let config: {
@@ -122,13 +84,11 @@ let config: {
     concurent_process: number,
     theme: "light" | "dark"
 } = {
-    concurent_dl: 5, //Infinity,
+    concurent_dl: os.cpus().length,
     concurent_process: os.cpus().length,
     output: path.resolve(eapp.getPath("desktop"), "./media"),
     theme: "dark"
 }
-// fs.mkdirSync(path.resolve(out, "Music", "Various Artists"), { recursive: true })
-// fs.mkdirSync(path.resolve(out, "TV Shows"), { recursive: true })
 fs.rmSync(temp, { recursive: true, force: true })
 fs.mkdirSync(temp, { recursive: true })
 type infoPL = {
@@ -140,17 +100,6 @@ type infoPL = {
     title: string,
     track: number,
     query: ytpl.Item
-}
-
-type infoVid = {
-    id: number,
-    video: string,
-    audio: string,
-    thumbnail: string
-    output: string,
-    title: string,
-    track: number,
-    query: ytdl.VideoDetails
 }
 
 electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, customRegExp: string[] = []) => {
@@ -166,7 +115,7 @@ electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, cus
         ev.sender.send("error", "No Playlist Found")
         return
     } else {
-        ev.sender.send("result", `Playlist ${pl.title} Found!`)
+        ev.sender.send("log", `Playlist ${pl.title} Found!`)
     }
 
     for (let query of pl.items) {
@@ -180,7 +129,6 @@ electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, cus
                 ev.sender.send("error", err)
                 return
             }
-            // console.log(rex, title)
         }
         items.push({ title, query })
     }
@@ -190,7 +138,6 @@ electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, cus
     }
 
     ev.sender.send("selector", { items, title: pl.title, url: pl.url })
-    // mainWin.minimize()
 })
 
 let downloading = 0
@@ -222,28 +169,24 @@ class NextEvents extends events {
 let nextevent = new NextEvents()
 
 nextevent.on("donedl", () => {
-    // downloading--
     if (dlqueue.length > 0) {
         nextevent.emit(`startdl_${dlqueue[ 0 ]}`)
         dlqueue.shift()
     }
-    // console.log("dq", downloading, dlqueue)
 
 })
 
 nextevent.on("doneproc", () => {
-    // processing--
     if (procqueue.length > 0) {
         nextevent.emit(`startproc_${procqueue[ 0 ]}`)
         procqueue.shift()
     }
-    // console.log("pq", processing, procqueue)
 })
 
 electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean, title: string }) => {
     nextevent.setLock()
     console.log("Starting pl dl")
-    mainWin.webContents.send("result", "Downloading Playlist")
+    mainWin.webContents.send("log", "Downloading Playlist")
     if (data.audioOnly) {
         data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')
         fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", data.title), { recursive: true })
@@ -251,7 +194,6 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
         data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')
         fs.mkdirSync(path.resolve(config.output, "TV Shows", data.title, "Season 00"), { recursive: true })
     }
-    // console.log(data.removeExtras)
     for (let i = 0; i < data.info.length; i++) {
         let thisId = id++
         let query = data.info[ i ].query
@@ -275,7 +217,6 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                 return `Error Downloading: ${info.title}`
             }
         }
-        // info.output = data.removeExtras ? info.output.replace(/[0-9]+\.\(\)\?/g, '').replace(/\( \)?\([A-z0-9 ]+\)/g, '') : info.output
         fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
         if (!data.audioOnly) {
             info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", data.title, "Season 00") ).replace("${replace_title}", `S00e${thisTrack} - `)
@@ -295,7 +236,7 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
         let titleRaw = info.title
         while (fs.existsSync(info.output)) {
             ++alt;
-            info.output = data.audioOnly ? outputRaw + ` (alternate ${alt}).mp3` : outputRaw + ` (alternate ${alt}).mp4`   //.replace(".mp3"," (alternate).mp3").replace(".mp4", " (alternate).mp4")
+            info.output = data.audioOnly ? outputRaw + ` (alternate ${alt}).mp3` : outputRaw + ` (alternate ${alt}).mp4`
             info.title = titleRaw + ` (alternate ${alt})`
         }
         fs.writeFileSync(info.output, "Checker File")
@@ -317,7 +258,7 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                     nextevent.emit("donedl")
                     downloading--
                     processing++
-                    mainWin.webContents.send("result", `Processing ${info.title}`)
+                    mainWin.webContents.send("log", `Processing ${info.title}`)
                     try {
                         let date = dayjs()
                         fs.appendFileSync(path.resolve(eapp.getPath("userData"), "ffmpeg.log"), `${info.title} started at ${date.format("DD/MM/YYYY HH:mm:ss")}\n`)
@@ -328,25 +269,22 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                                 '-i', `${info.audio}`,
                                 '-map', '0:a',
                                 '-c:a', 'mp3',
-                                // '-f', "mp3",
                                 '-metadata', `album=${data.title}`,
                                 '-metadata', `album_artist=Various Artists`,
                                 '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
-                                '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
-                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
-                                '-metadata', `performer=${info.query.author.name || "No Performer"}`, //.replaceAll("'", '')
+                                '-metadata', `author=${info.query.author.name || "No Author"}`,
+                                '-metadata', `composer=${info.query.author.name || "No Composer"}`,
+                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
+                                '-metadata', `performer=${info.query.author.name || "No Performer"}`,
                                 '-metadata', `disc=1`,
                                 '-metadata', `genre=YoutTube Video`,
                                 '-metadata', `title=${info.title}`,
                                 '-metadata', `track=${info.track}`,
                                 "-y",
-                                // `comment="${info.query.description?.replaceAll('"', '').replaceAll("'", '') || "No Description"}"`,
                                 `${info.output}`
                             ], {
                                 shell: false,
                             })
-                            // console.log(ffmpeg.spawnargs.join(" "))
                         } else {
                             ffmpeg = cp.spawn(ffmpegPath, [
                                 '-i', `${info.video}`,
@@ -359,30 +297,24 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                                 '-map', '2:v',
                                 '-c:v:1', 'mjpeg',
                                 '-disposition:v:1', 'attached_pic',
-                                // '-f', 'mp4',
                                 '-metadata', `album=${data.title}`,
                                 '-metadata', `album_artist=${data.title}`,
                                 '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
-                                '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
-                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
-                                '-metadata', `performer=${info.query.author.name || "No Performer"}`, //.replaceAll("'", '')
+                                '-metadata', `author=${info.query.author.name || "No Author"}`,
+                                '-metadata', `composer=${info.query.author.name || "No Composer"}`,
+                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
+                                '-metadata', `performer=${info.query.author.name || "No Performer"}`,
                                 '-metadata', `disc=1`,
-                                '-metadata', `title=${info.title.replaceAll('"', '')}`, //.replaceAll("'", '')}
+                                '-metadata', `title=${info.title.replaceAll('"', '')}`,
                                 '-metadata', `track=${info.track}`,
                                 "-y",
-                                // ` comment="${info.query.description?.replaceAll('"', '').replaceAll("'", '') || "No Description"}"`,
                                 `${info.output}`
-                                // "pipe:1"
                             ], {
                                 shell: false,
-                                // stdio: ["pipe", output, "pipe"]
                             })
-                            // console.log(ffmpeg.spawnargs.join(" "))
                         }
                         ffmpeg.on("error", () => { ffmpegLog.write(onError) })
                         ffmpeg.stderr.pipe(ffmpegLog, { end: true })
-                        // ffmpeg.stderr.pipe(process.stderr, { end: true })
                         ffmpeg.stdout.pipe(ffmpegLog, { end: true })
                         ffmpeg.stdout.pipe(process.stdout, { end: true })
                         ffmpeg.on("exit", () => {
@@ -392,11 +324,9 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                                 fs.rmSync(info.thumbnail)
                             }
                             fs.rmSync(info.audio)
-                            mainWin.webContents.send("result", `${info.title} Done`)
-                            // console.log("Done")
+                            mainWin.webContents.send("log", `${info.title} Done`)
                             nextevent.emit("doneproc")
                             processing--
-                            // eapp.quit()
                         })
                     } catch {
                         mainWin.webContents.send("error", `Error Downloading: ${info.title}`)
@@ -404,7 +334,6 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                     }
                 }
                 let checkAndCloseAudio = () => {
-                    // console.log("audio done")
                     if (vidDone || data.audioOnly) {
                         nextevent.once(`startproc_${info.id}`, finsh)
                         if (processing < config.concurent_process) {
@@ -418,7 +347,6 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                     }
                 }
                 let checkAndCloseVideo = () => {
-                    // console.log("video done")
                     if (audioDone) {
                         nextevent.once(`startproc_${info.id}`, finsh)
                         if (processing < config.concurent_process) {
@@ -460,7 +388,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
             ev.sender.send("error", "Video is currently unavalible (might be live)")
             return "Video is currently unavalible (might be live)"
         }
-        ev.sender.send("result", `Downloading ${query.title}`)
+        ev.sender.send("log", `Downloading ${query.title}`)
         if (audioOnly) {
             fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", "Mixed"), { recursive: true })
             track = fs.existsSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 0;
@@ -469,7 +397,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
             track = fs.existsSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 1;
         }
         let thisTrack = `${++track}`
-        if (thisTrack.startsWith("0")) {
+        if (!thisTrack.startsWith("0")) {
             thisTrack = `0${thisTrack}`
         }
         let title = query.title.replace(/\.$/, '')
@@ -487,7 +415,6 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
             id: thisId,
             video: path.resolve(temp, `${thisId}_video.mp4`),
             audio: path.resolve(temp, `${thisId}_audio.mp4`),
-            // video_output: path.resolve(temp, `${thisId}.mp4`),
             thumbnail: path.resolve(temp, `${thisId}_thumbnail.jpeg`),
             output: path.join('${dir}', `\${replace_title} ${title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.${audioOnly ? "mp3" : "mp4"}`),
             title,
@@ -500,9 +427,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                 return `Error Downloading: ${info.title}`
             }
         }
-        // info.output = removeExtras ? info.output.replace(/[0-9]+\. /g, '').replace(/ \([A-z0-9 ]+\)/g, '') : info.output
         fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
-        // console.log("hi", info.id)
         if (!audioOnly) {
             info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", "Mixed", "Season 00") + path.sep).replace("${replace_title} ", `S00e${thisTrack} -`)
             fs.writeFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), JSON.stringify({ track }))
@@ -540,32 +465,31 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                     nextevent.emit("donedl")
                     downloading--
                     processing++
-                    ev.sender.send("result", `Processing ${info.title}`)
+                    ev.sender.send("log", `Processing ${info.title}`)
                     try {
                         let date = dayjs()
                         fs.appendFileSync(path.resolve(eapp.getPath("userData"), "ffmpeg.log"), `${info.title} started at ${date.format("DD/MM/YYYY HH:mm:ss")}\n`)
                         let ffmpegLog = fs.createWriteStream(path.resolve(eapp.getPath("userData"), "ffmpeg", `${info.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.log`), { autoClose: true, flags: 'a+' })
                         let ffmpeg: cp.ChildProcess
                         if (audioOnly) {
-                            // console.log(title)
                             ffmpeg = cp.spawn(ffmpegPath, [
                                 '-i', `${info.audio}`,
                                 '-map', '0:a',
                                 '-c:a', 'mp3',
                                 '-metadata', `title=${title}`,
                                 '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
-                                '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
-                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
-                                '-metadata', `performer=${info.query.author.name || "No Performer"}`, //.replaceAll("'", '')
+                                '-metadata', `author=${info.query.author.name || "No Author"}`,
+                                '-metadata', `composer=${info.query.author.name || "No Composer"}`,
+                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
+                                '-metadata', `performer=${info.query.author.name || "No Performer"}`,
                                 '-metadata', `genre=YoutTube Video`,
                                 '-metadata', `album_artist=Various Artists`,
                                 '-metadata', `track=${info.track}`,
                                 '-metadata', `disc=1`,
                                 '-metadata', `album=Mixed`,
                                 "-y",
-                                // `comment="${info.query.description?.replaceAll('"', '').replaceAll("'", '') || "No Description"}"`,
-                                info.output
+                                info.
+                                output
                             ], {
                                 shell: false,
                             })
@@ -583,15 +507,14 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                                 '-disposition:v:1', 'attached_pic',
                                 '-metadata', `title=${title}`,
                                 '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                '-metadata', `author=${info.query.author.name || "No Author"}`, //.replaceAll("'", '')
-                                '-metadata', `composer=${info.query.author.name || "No Composer"}`, //.replaceAll("'", '')
-                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`, //.replaceAll("'", '')
-                                '-metadata', `performer=${info.query.author.name || "No Performer"}`, //.replaceAll("'", '')
+                                '-metadata', `author=${info.query.author.name || "No Author"}`,
+                                '-metadata', `composer=${info.query.author.name || "No Composer"}`,
+                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
+                                '-metadata', `performer=${info.query.author.name || "No Performer"}`,
                                 '-metadata', `album=Mixed`,
                                 '-metadata', `track=${info.track}`,
                                 '-metadata', `disc=1`,
                                 "-y",
-                                // ` comment="${info.query.description?.replaceAll('"', '').replaceAll("'", '') || "No Description"}"`,
                                 info.output
                             ], {
                                 shell: false,
@@ -609,11 +532,9 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                                 fs.rmSync(info.thumbnail)
                             }
                             fs.rmSync(info.audio)
-                            ev.sender.send("result", `${info.title} Done`)
-                            // console.log("Done")
+                            ev.sender.send("log", `${info.title} Done`)
                             nextevent.emit("doneproc")
                             processing--
-                            // eapp.quit()
                         })
                     } catch {
                         ev.sender.send("error", `Error Downloading: ${info.title}`)
@@ -621,7 +542,6 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                     }
                 }
                 let checkAndCloseAudio = () => {
-                    // console.log("audio done")
                     if (vidDone || audioOnly) {
                         nextevent.once(`startproc_${info.id}`, finsh)
                         if (processing < config.concurent_process) {
@@ -635,7 +555,6 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                     }
                 }
                 let checkAndCloseVideo = () => {
-                    // console.log("video done")
                     if (audioDone) {
                         nextevent.once(`startproc_${info.id}`, finsh)
                         if (processing < config.concurent_process) {
@@ -686,7 +605,6 @@ electron.ipcMain.handle("choose_output", () => {
 
 electron.ipcMain.handle("set_concurrency", (ev, dl: number | "infinity" = 5, proc: number | "infinity" = 5) => {
     //@ts-ignore
-    // console.log(dl, proc, parseInt(dl), parseInt(proc))
     if (dl.toString().toLowerCase() == "infinity") {
         config.concurent_dl = Infinity
     } else if (typeof dl == "number") {
@@ -710,7 +628,6 @@ electron.ipcMain.handle("set_concurrency", (ev, dl: number | "infinity" = 5, pro
     }
 
     //@ts-ignore
-    // console.log(config, isNaN(parseInt(dl)), isNaN(parseInt(proc)))
 
     fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, (_key, val) => (val == Infinity ? "infinity" : val), 4))
     nextevent.setMaxListeners(config.concurent_process + config.concurent_dl + 7)
@@ -754,14 +671,7 @@ let createWin = (url: string, preloadFile = "", showOnCreate = true) => {
         ev.preventDefault()
     }
 
-    // win.webContents.setWindowOpenHandler((details) => {
-    //     console.log("1")
-    //     return {
-    //         action: "deny"
-    //     }
-    // })
     win.webContents.on("will-navigate", open)
-    // win.webContents.on("new-window", open)
     win.webContents.session.setPermissionCheckHandler(() => {
         return false;
     })
@@ -809,7 +719,6 @@ if (!eapp.isPackaged) {
     /* eslint-enable @typescript-eslint/no-var-requires */
     let compiler = webpack(wpconfig)
     app.use(wpdm(compiler, {
-        // methods: "GET",
         index: true,
         serverSideRender: true,
         writeToDisk: false
@@ -852,7 +761,6 @@ app.all("*", (req, res, next) => {
                 res.status(500).send("Internal Error")
             }
         })
-        // res.send("Hello World")
     })
 
 })

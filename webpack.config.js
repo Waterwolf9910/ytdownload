@@ -77,7 +77,7 @@ let config = {
     output: {
         path: path.resolve("dist", "static"),
         charset: true,
-        clean: false,
+        clean: true,
         publicPath: "/",
         filename: `js${ path.sep }[id].js`
     },

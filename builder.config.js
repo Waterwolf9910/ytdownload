@@ -28,18 +28,11 @@ let publish = {
  */
 let config = {
     appId: `com.waterwolfies.${ appConfig.name }`,
-    // appId: `com.waterwolfies.youtube_download`,
     publish,
     appImage: {
-        // publish: {
-        //     ...basePublish,
-        //     url: basePublish.url + "/linux",
-        // }
     },
     icon: path.resolve(__dirname, "icon.png"),
-    // productName: appConfig.name,
     directories: {
-        // buildResources: null,
         output: path.resolve(__dirname, "build", "${os}/${version}/${arch}")
     },
     compression: "normal",
@@ -64,33 +57,16 @@ let config = {
         "!README.md",
         "!tsconfig.json",
         "!webpack.config.js"
-        // "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
-        // "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
-        // "!**/node_modules/*.d.ts",
-        // "!**/node_modules/.bin",
-        // "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
-        // "!.editorconfig",
-        // "!**/._*",
-        // "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
-        // "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
-        // "!**/{appveyor.yml,.travis.yml,circle.yml}",
-        // "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}",
-        // ".yarn${/*}",
     ],
     extraResources: [
         ".yarn${/*}",
+        "!.yarn/releases${/*}",
+        "!.yarn/sdks${/*}",
+        "!.yarn/install-state.gz",
         ".pnp.cjs",
         ".pnp.loader.mjs"
     ],
-
-    // beforePack: (ctx) => {
-
-    // },
     win: {
-        // publish: {
-        //     ...basePublish,
-        //     url: basePublish.url + "/win"
-        // },
         target: [
             {
                 target: "nsis",
@@ -109,34 +85,18 @@ let config = {
     msi: {
         oneClick: false,
         runAfterFinish: false,
-        // publish: {
-        //     ...basePublish,
-        //     url: basePublish.url + "/win"
-        // }
     },
     nsis: {
         oneClick: false,
-        // publish: {
-        //     ...basePublish,
-        //     url: basePublish.url + "/win"
-        // },
         allowToChangeInstallationDirectory: true,
         license: path.resolve(__dirname, "LICENSE"),
         runAfterFinish: true,
     },
     squirrelWindows: {
         msi: true,
-        // publish: {
-        //     ...basePublish,
-        //     url: basePublish.url + "/win"
-        // }
     },
     linux: {
         category: "AudioVideo",
-        // publish: {
-        //     ...basePublish,
-        //     url: basePublish.url + "/linux"
-        // },
         target: [
             {
                 target: "deb",

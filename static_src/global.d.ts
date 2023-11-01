@@ -16,7 +16,6 @@ declare global {
             setLogListener: (listenerFunc: listener) => void,
             setErrorListener: (listenerFunc: listener) => void,
             setDLListener: (listenerFunc: listener) => void,
-            setResultListener: (listenerFunc: listener) => void,
             setPLListener: (listenerFunc: playlistListener) => void
             concurrency: (dl: number | string, proc: number | string) => Promise<string>
             plRequest: (link: string, reversePl: boolean, customRegExp: string[]) => void,
