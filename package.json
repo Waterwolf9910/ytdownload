@@ -46,7 +46,7 @@
         "electron": "latest",
         "electron-builder": "latest",
         "electron-publish": "^24.8.0",
-        "eslint": "^8.52.0",
+        "eslint": "^8.53.0",
         "html-webpack-plugin": "^5.5.3",
         "postcss": "^8.4.31",
         "postcss-loader": "^7.3.3",
