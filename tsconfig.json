@@ -5,12 +5,14 @@
         "rootDir": "src",
         "outDir": "dist",
         "sourceMap": true,
+        
         "sourceRoot": "../src",
         "diagnostics": true,
         "extendedDiagnostics": true,
         "removeComments": true,
     },
     "exclude": [
+        ".yarn",
         "node_modules",
         "static_src",
     ],

@@ -9,9 +9,9 @@
             "type": "node",
             "request": "launch",
             "name": "Main",
-            "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-26.2.0-af7dba36e6/node_modules/electron/dist/electron",
+            "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-27.0.2-57dad1d80f/node_modules/electron/dist/electron",
             "windows": {
-                "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-26.2.0-af7dba36e6/node_modules/electron/dist/electron.exe"
+                "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-27.0.2-57dad1d80f/node_modules/electron/dist/electron.exe"
             },
             "program": "${workspaceFolder}/dist/index.js",
             "args": [
