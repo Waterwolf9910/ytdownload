@@ -1,6 +1,6 @@
-@use "../bootstrap-icons-1.11.1/bootstrap-icons.scss" with (
-    $bootstrap-icons-font-dir: "../bootstrap-icons-1.11.1/fonts"
-);
+// @use "../bootstrap-icons-1.11.1/bootstrap-icons.scss" with (
+//     $bootstrap-icons-font-dir: "../bootstrap-icons-1.11.1/fonts"
+// );
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/variables-dark";
@@ -42,6 +42,14 @@ header {
     justify-content: space-between;
 }
 
+pre, p {
+    margin: 0;
+}
+
+label {
+    margin: 5px;
+}
+
 #check {
     top: 6px;
     left: 10px;
@@ -57,7 +65,7 @@ main {
         margin: 0 auto;
     }
     .col {
-        padding-bottom: 30px;
+        padding-bottom: 15px;
     }
 }
 
@@ -71,10 +79,10 @@ html,body,#root {
     width: 100%;
 }
 
-div:has(> #custom_regexp) {
-    display: flex;
-    justify-content: space-around;
-}
+// div:has(> #custom_regexp) {
+//     display: flex;
+//     justify-content: space-around;
+// }
 
 button,input[type="button"]:not(:disabled) {
     cursor: pointer;

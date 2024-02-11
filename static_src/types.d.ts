@@ -5,3 +5,9 @@ declare module "*.css" {
 declare module "*.scss" {
     export default CSSStyleSheet.prototype
 }
+
+declare module "*.svg" {
+    let _string: string
+    export default _string
+}
+

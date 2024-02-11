@@ -3,6 +3,8 @@
         "sourceMap": true,
         "lib": ["DOM"],
         "jsx": "react-jsx",
+        "module": "ES2022",
+        "moduleResolution": "Bundler",
         "strict": true
     }
 }

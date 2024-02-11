@@ -1,12 +1,15 @@
-import react = require("react")
-import utils = require("./utils")
-import Video = require("./components/video")
+import * as react from "react"
+import utils from  "./utils"
+import Video from "./components/video"
+import moon_stars from "../bootstrap-icons-1.11.1/moon-stars.svg"
+import sun_fill from "../bootstrap-icons-1.11.1/sun-fill.svg"
+
 let valid = false
 let isPL = false
 let logs_list: string[] = []
 let errors_list: string[] = []
 
-let page = () => {
+const page = () => {
     let [selected_tab, set_tab] = react.useState(0)
     //@ts-ignore
     let [current_list, set_list] = react.useState<{ items: { title: string, query: import("ytpl").Item }[], title: string, url: string }>({})
@@ -26,7 +29,7 @@ let page = () => {
     let regex_flags = react.useRef<HTMLSelectElement>(null)
     let progressBar = react.useRef<HTMLProgressElement>(null)
     let check = react.useRef<HTMLTextAreaElement>(null)
-    let color_mode = react.useRef<HTMLElement>(null)
+    let color_mode = react.useRef<HTMLImageElement>(null)
 
     let sendReq = () => {
         if (valid && isPL) {
@@ -127,7 +130,8 @@ let page = () => {
         })
 
         window.api.theme().then(theme => {
-            color_mode.current!.className = `bi ${theme == "dark" ? "bi-moon-stars" : "bi-sun-fill"}`
+            color_mode.current!.src = theme == "dark" ? moon_stars : sun_fill
+            color_mode.current!.style.filter = theme == "dark" ? 'invert(100%)' : ''
         })
 
         submit.current!.disabled = true
@@ -141,34 +145,42 @@ let page = () => {
             main = <>
                 <div className="col">
                     <div className="url_div">
-                        <a>Enter Link Here </a>
-                        <input type="url" ref={url} autoFocus required title="_test" onInput={onInput} onKeyDown={e => {
-                            if (e.key == "Enter" || e.code == "Enter") {
-                                sendReq()
-                            }
-                        }} />
-                        <textarea title="status" ref={check} readOnly cols={1} rows={1} style={{pointerEvents: "none"}}/>
+                        <p>Enter Link Here:</p>
+                        <div className="row center_items">
+                            <input type="url" ref={url} autoFocus required title="url" onInput={onInput} onKeyDown={e => {
+                                if (e.key == "Enter" || e.code == "Enter") {
+                                    sendReq()
+                                }
+                            }} />
+                            <textarea title="status" ref={check} readOnly cols={1} rows={1} style={{pointerEvents: "none"}}/>
+                        </div>
                     </div>
                     <div className="options">
-                        <label htmlFor="audio">Audio Only</label>
-                        <input type="checkbox" id="audio" ref={audio} />
-                        <label htmlFor="reverse">Reverse Playlist</label>
-                        <input type="checkbox" id="reverse" ref={reverse} disabled />
+                        <div className="row center_items" style={{ marginBottom: 0 }}>
+                            <label htmlFor="audio">Audio Only: </label>
+                            <input type="checkbox" id="audio" ref={audio} />
+                        </div>
+                        <div className="row center_items" style={{marginBottom: 0}}>
+                            <label htmlFor="reverse">Reverse Playlist: </label>
+                            <input type="checkbox" id="reverse" ref={reverse} disabled />
+                        </div>
                     </div>
-                    <div>
+                    <div className="row center_items" style={{justifyContent: "space-around"}}>
                         <label htmlFor="custon_regexp">
                             <a className="link-info" href="https://www.regular-expressions.info/tutorial.html">Custom RegExp</a>
                         </label>
-                        <input type="text" id="custom_regexp" ref={regex} title="_test" onInput={onRegexTest} />
-                        <select id="regexp_flags" ref={regex_flags} title="flags">
-                            <option value=""></option>
-                            <option value="g">g</option>
-                            <option value="i">i</option>
-                            <option value="y">y</option>
-                            <option value="u">u</option>
-                        </select>
+                        <div>
+                            <input type="text" id="custom_regexp" ref={regex} title="_test" onInput={onRegexTest} />
+                            <select id="regexp_flags" ref={regex_flags} title="flags">
+                                <option value=""></option>
+                                <option value="g">g</option>
+                                <option value="i">i</option>
+                                <option value="y">y</option>
+                                <option value="u">u</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
+                    <div className="row center_items">
                         <label htmlFor="regexp_test"><pre>Test </pre></label>
                         <input type="text" title="regexp_test" ref={regex_tester} onInput={onRegexTest} />
                         <input type="text" title="regexp_result" ref={regex_result} readOnly style={{ pointerEvents: "none" }} />
@@ -213,11 +225,12 @@ let page = () => {
         <header>
             <div>
                 <input type="button" value="Select Output Location" onClick={window.api.selectOutput} />
-                <span><i className='bi' ref={color_mode} style={{marginLeft: "10px", cursor: "pointer"}} onClick={async e => {
+                <img title="theme select" ref={color_mode} style={{marginLeft: "10px", cursor: "pointer"}} onClick={async _e => {
                     let theme = (await utils.loadTheme()) == "dark" ? "light" : "dark"
                     utils.setTheme(theme)
-                    color_mode.current!.className = `bi ${theme == "dark" ? "bi-moon-stars" : "bi-sun-fill"}`
-                }}/></span>
+                    color_mode.current!.src = theme == "dark" ? moon_stars : sun_fill
+                    color_mode.current!.style.filter = theme == "dark" ? 'invert(100%)' : ''
+                }}/>
             </div>
             <div>
                 <button className="btn btn-primary" onClick={() => set_tab(0)}>Main Page</button>
@@ -254,4 +267,4 @@ let page = () => {
     </>
 }
                 
-export = page
+export default page

@@ -1,10 +1,11 @@
-import react = require("react")
+import * as react from "react"
+import trash_icon from "../../bootstrap-icons-1.11.1/trash.svg"
 
 type props = {
     data: import('ytpl').Item & { eid: number },
     clickDelete?: react.MouseEventHandler,
 }
-export = ({ data, clickDelete }: props) => {
+export default ({ data, clickDelete }: props) => {
     
     let img = react.useRef<HTMLImageElement>(null)
     
@@ -42,7 +43,7 @@ export = ({ data, clickDelete }: props) => {
                 </div>
             </div>
             <div className="col" style={{justifyContent: "flex-end"}}>
-                <button className="btn btn-outline-danger" onClick={clickDelete} aria-label="Delete"><i className="bi bi-trash"/></button>
+                <button className="btn btn-outline-danger" onClick={clickDelete} aria-label="Delete"><img src={trash_icon} title="Delete"/></button>
             </div>
         </div>
     </div>

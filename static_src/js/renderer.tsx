@@ -1,8 +1,8 @@
-import react = require("react")
-import Page = require("./index")
-import dom = require("react-dom/client")
-import baseStyle = require("../css/base.scss")
-import utils = require("./utils")
+import * as react from "react"
+import Page  from "./index"
+import * as dom from "react-dom/client"
+import baseStyle from "../css/base.scss"
+import utils from "./utils"
 
 let root: dom.Root
 utils.loadTheme()
@@ -17,7 +17,7 @@ if (module.hot) {
     root = dom.createRoot(document.getElementById("root")!)
 }
 
-document.adoptedStyleSheets = [baseStyle.default]
+document.adoptedStyleSheets = [baseStyle]
 
 root.render(<react.StrictMode>
     <Page />

@@ -1,14 +1,16 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 //@ts-ignore
-let bootstrap: typeof import("bootstrap") = undefined
+// let bootstrap: typeof import("bootstrap") = undefined
 
 // Lazy load bootstrap
-require.ensure([], require => {
-    bootstrap = require("bootstrap/dist/js/bootstrap.esm.min.js")
-})
+// require.ensure([], require => {
+//     bootstrap = require("bootstrap/dist/js/bootstrap.esm.min.js")
+// })
+
+import { Popover } from 'bootstrap'
 
 let renderError = (content: string, ref: import('react').RefObject<HTMLElement>) => {
-    let popover = new bootstrap.Popover(ref.current!, {
+    let popover = new Popover(ref.current!, {
         animation: true,
         delay: 500,
         placement: "bottom",
@@ -23,7 +25,7 @@ let renderError = (content: string, ref: import('react').RefObject<HTMLElement>)
 }
 
 let cached_theme: string
-export = {
+export default {
     setTheme: async (theme: string) => {
         cached_theme = await window.api.theme(theme)
         document.documentElement.setAttribute("data-bs-theme", theme)
@@ -36,7 +38,7 @@ export = {
         return cached_theme
     },
     renderError,
-    get bootstrap() {
-        return bootstrap
-    },
+    // get bootstrap() {
+    //     return bootstrap
+    // },
 }
