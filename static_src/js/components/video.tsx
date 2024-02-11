@@ -28,7 +28,7 @@ export = ({ data, clickDelete }: props) => {
             }
         }
         
-    }, [])
+    })
     
     return <div className="card" style={{width: '90%'}}>
         <div className="row" style={{justifyContent: "space-between"}}>
