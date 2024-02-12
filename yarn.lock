@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 8
+  version: 6
   cacheKey: 10
 
 "7zip-bin@npm:~5.1.1":
@@ -2455,16 +2455,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:latest":
-  version: 27.0.2
-  resolution: "electron@npm:27.0.2"
+"electron@npm:27.2.2":
+  version: 27.2.2
+  resolution: "electron@npm:27.2.2"
   dependencies:
-    "@electron/get": "npm:^2.0.0"
-    "@types/node": "npm:^18.11.18"
-    extract-zip: "npm:^2.0.1"
+    "@electron/get": ^2.0.0
+    "@types/node": ^18.11.18
+    extract-zip: ^2.0.1
   bin:
     electron: cli.js
-  checksum: de597920b1888b25995570566403e8caa89f55d5fc4396ead6bd7f43b6da1fec362ad525b4bd772a03ef672e607fcd98ed463bffe301c7cca59eddcf7093eb0f
+  checksum: 8/9dac3963c776d50881cd9ff6ab6b2efb0a2e589facabd651448bbf1a3bc8b0fa7f727d4593228feb4aad39b18bca3615a17429cb8e59706adc5e17597f9b5bf7
   languageName: node
   linkType: hard
 
@@ -3101,9 +3101,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fsevents@patch:fsevents@npm%3A~2.3.2#optional!builtin<compat/fsevents>":
+"fsevents@patch:fsevents@npm%3A~2.3.2#~builtin<compat/fsevents>":
   version: 2.3.3
-  resolution: "fsevents@patch:fsevents@npm%3A2.3.3#optional!builtin<compat/fsevents>::version=2.3.3&hash=df0bf1"
+  resolution: "fsevents@patch:fsevents@npm%3A2.3.3#~builtin<compat/fsevents>::version=2.3.3&hash=df0bf1"
   dependencies:
     node-gyp: "npm:latest"
   conditions: os=darwin
@@ -5054,16 +5054,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@patch:resolve@npm%3A^1.20.0#optional!builtin<compat/resolve>":
+"resolve@patch:resolve@npm%3A^1.20.0#~builtin<compat/resolve>":
   version: 1.22.8
-  resolution: "resolve@patch:resolve@npm%3A1.22.8#optional!builtin<compat/resolve>::version=1.22.8&hash=c3c19d"
+  resolution: "resolve@patch:resolve@npm%3A1.22.8#~builtin<compat/resolve>::version=1.22.8&hash=c3c19d"
   dependencies:
     is-core-module: "npm:^2.13.0"
     path-parse: "npm:^1.0.7"
     supports-preserve-symlinks-flag: "npm:^1.0.0"
   bin:
     resolve: bin/resolve
-  checksum: f345cd37f56a2c0275e3fe062517c650bb673815d885e7507566df589375d165bbbf4bdb6aa95600a9bc55f4744b81f452b5a63f95b9f10a72787dba3c90890a
+  checksum: 8/5479b7d431cacd5185f8db64bfcb7286ae5e31eb299f4c4f404ad8aa6098b77599563ac4257cb2c37a42f59dfc06a1bec2bcf283bb448f319e37f0feb9a09847
   languageName: node
   linkType: hard
 
@@ -5801,23 +5801,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^4.0.2#optional!builtin<compat/typescript>":
-  version: 4.9.5
-  resolution: "typescript@patch:typescript@npm%3A4.9.5#optional!builtin<compat/typescript>::version=4.9.5&hash=289587"
+"typescript@patch:typescript@latest#~builtin<compat/typescript>":
+  version: 5.2.2
+  resolution: "typescript@patch:typescript@npm%3A5.2.2#~builtin<compat/typescript>::version=5.2.2&hash=d73830"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 5659316360b5cc2d6f5931b346401fa534107b68b60179cf14970e27978f0936c1d5c46f4b5b8175f8cba0430f522b3ce355b4b724c0ea36ce6c0347fab25afd
+  checksum: 8/07106822b4305de3f22835cbba949a2b35451cad50888759b6818421290ff95d522b38ef7919e70fb381c5fe9c1c643d7dea22c8b31652a717ddbd57b7f4d554
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3Alatest#optional!builtin<compat/typescript>":
-  version: 5.2.2
-  resolution: "typescript@patch:typescript@npm%3A5.2.2#optional!builtin<compat/typescript>::version=5.2.2&hash=f3b441"
+"typescript@patch:typescript@npm%3A^4.0.2#~builtin<compat/typescript>":
+  version: 4.9.5
+  resolution: "typescript@patch:typescript@npm%3A4.9.5#~builtin<compat/typescript>::version=4.9.5&hash=d73830"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: f79cc2ba802c94c2b78dbb00d767a10adb67368ae764709737dc277273ec148aa4558033a03ce901406b35fddf4eac46dabc94a1e1d12d2587e2b9cfe5707b4a
+  checksum: 8/2eee5c37cad4390385db5db5a8e81470e42e8f1401b0358d7390095d6f681b410f2c4a0c496c6ff9ebd775423c7785cdace7bcdad76c7bee283df3d9718c0f20
   languageName: node
   linkType: hard
 
@@ -6193,47 +6193,47 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "youtube_download@workspace:."
   dependencies:
-    "@distube/ytdl-core": "npm:4.11.x"
-    "@pmmmwh/react-refresh-webpack-plugin": "npm:^0.5.11"
-    "@types/bootstrap": "npm:^5.2.8"
-    "@types/express": "npm:^4.17.13"
-    "@types/node": "npm:latest"
-    "@types/react": "npm:^18.2.31"
-    "@types/react-dom": "npm:^18.2.14"
-    "@types/webpack-env": "npm:^1.18.3"
-    "@typescript-eslint/eslint-plugin": "npm:^6.9.1"
-    "@typescript-eslint/parser": "npm:^6.9.1"
-    app-builder-bin: "npm:latest"
-    app-builder-lib: "npm:latest"
-    autoprefixer: "npm:^10.4.16"
-    bootstrap: "npm:^5.3.2"
-    builder-util: "npm:latest"
-    css-loader: "npm:^6.8.1"
-    dayjs: "npm:^1.11.0"
-    electron: "npm:latest"
-    electron-builder: "npm:latest"
-    electron-publish: "npm:^24.8.0"
-    electron-updater: "npm:6.1.4"
-    eslint: "npm:^8.52.0"
-    express: "npm:latest"
-    ffmpeg-static: "npm:latest"
-    html-webpack-plugin: "npm:^5.5.3"
-    postcss: "npm:^8.4.31"
-    postcss-loader: "npm:^7.3.3"
-    react: "npm:^18.2.0"
-    react-dom: "npm:^18.2.0"
-    react-refresh: "npm:^0.14.0"
-    react-refresh-typescript: "npm:^2.0.9"
-    sass: "npm:^1.69.4"
-    sass-loader: "npm:^13.3.2"
-    terser-webpack-plugin: "npm:^5.3.1"
-    ts-loader: "npm:^9.5.0"
-    typescript: "npm:latest"
-    webpack: "npm:^5.89.0"
-    webpack-cli: "npm:^5.1.4"
-    webpack-dev-middleware: "npm:^6.1.1"
-    webpack-hot-middleware: "npm:^2.25.4"
-    ytpl: "npm:latest"
+    "@distube/ytdl-core": 4.11.x
+    "@pmmmwh/react-refresh-webpack-plugin": ^0.5.11
+    "@types/bootstrap": ^5.2.8
+    "@types/express": ^4.17.13
+    "@types/node": latest
+    "@types/react": ^18.2.31
+    "@types/react-dom": ^18.2.14
+    "@types/webpack-env": ^1.18.3
+    "@typescript-eslint/eslint-plugin": ^6.9.1
+    "@typescript-eslint/parser": ^6.9.1
+    app-builder-bin: latest
+    app-builder-lib: latest
+    autoprefixer: ^10.4.16
+    bootstrap: ^5.3.2
+    builder-util: latest
+    css-loader: ^6.8.1
+    dayjs: ^1.11.0
+    electron: 27.2.2
+    electron-builder: latest
+    electron-publish: ^24.8.0
+    electron-updater: 6.1.4
+    eslint: ^8.52.0
+    express: latest
+    ffmpeg-static: latest
+    html-webpack-plugin: ^5.5.3
+    postcss: ^8.4.31
+    postcss-loader: ^7.3.3
+    react: ^18.2.0
+    react-dom: ^18.2.0
+    react-refresh: ^0.14.0
+    react-refresh-typescript: ^2.0.9
+    sass: ^1.69.4
+    sass-loader: ^13.3.2
+    terser-webpack-plugin: ^5.3.1
+    ts-loader: ^9.5.0
+    typescript: latest
+    webpack: ^5.89.0
+    webpack-cli: ^5.1.4
+    webpack-dev-middleware: ^6.1.1
+    webpack-hot-middleware: ^2.25.4
+    ytpl: latest
   dependenciesMeta:
     app-builder-bin:
       unplugged: true
