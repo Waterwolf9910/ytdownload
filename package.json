@@ -44,7 +44,7 @@
         "builder-util": "latest",
         "css-loader": "^6.8.1",
         "electron": "latest",
-        "electron-builder": "latest",
+        "electron-builder": "25.0.0",
         "electron-publish": "^24.8.0",
         "eslint": "^8.52.0",
         "html-webpack-plugin": "^5.5.3",
