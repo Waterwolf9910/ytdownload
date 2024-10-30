@@ -9,9 +9,9 @@
             "type": "node",
             "request": "launch",
             "name": "Main",
-            "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-27.0.2-57dad1d80f/node_modules/electron/dist/electron",
+            "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-33.0.1-da971844f1/node_modules/electron/dist/electron",
             "windows": {
-                "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-27.0.2-57dad1d80f/node_modules/electron/dist/electron.exe"
+                "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-33.0.1-da971844f1/node_modules/electron/dist/electron.exe"
             },
             "program": "${workspaceFolder}/dist/index.js",
             "args": [
@@ -33,7 +33,7 @@
             "serverReadyAction":{
                 "action": "startDebugging",
                 "name": "Renderer",
-                "pattern": "webpack [0-9.]+ compiled successfully",
+                "pattern": "Started!",
                 "killOnServerStop": false
             },
             "console": "integratedTerminal",

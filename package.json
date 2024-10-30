@@ -4,26 +4,29 @@
     "homepage": "https://waterwolfies.com",
     "license": "MIT",
     "private": true,
+    "type": "commonjs",
     "description": "A application that downloads videos and music from youtube",
     "author": {
         "email": "waterwolf9910@waterwolfies.com",
         "name": "Waterwolf9910",
         "url": "https://waterwolfies.com"
     },
-    "packageManager": "yarn@4.0.0",
+    "packageManager": "yarn@4.5.0",
     "dependencies": {
-        "@distube/ytdl-core": "4.11.x",
+        "@distube/ytdl-core": "latest",
+        "@distube/ytpl": "patch:@distube/ytpl@npm%3A1.2.1#~/.yarn/patches/@distube-ytpl-npm-1.2.1-9b3ebcfa7b.patch",
         "bootstrap": "^5.3.2",
         "dayjs": "^1.11.0",
         "electron-updater": "6.1.4",
         "express": "latest",
-        "ffmpeg-static": "latest",
+        "ffmpeg-static": "^5.2.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "ytpl": "latest"
     },
     "main": "dist/index.js",
     "scripts": {
+        "start": "tsc && yarn webpack -c webpack.config.js && electron dist/index.js",
         "prepareDebug": "yarn tsc",
         "build": "node -e \"fs.mkdirSync('./build', { recursive: true })\" && yarn tsc && yarn webpack -c webpack.config.js && electron-builder -c builder.config.js",
         "electron-builder": "node -e \"fs.mkdirSync('./build', { recursive: true })\" && electron-builder"
@@ -60,9 +63,13 @@
         "webpack": "^5.89.0",
         "webpack-cli": "^5.1.4",
         "webpack-dev-middleware": "^6.1.1",
-        "webpack-hot-middleware": "^2.25.4"
+        "webpack-hot-middleware": "^2.25.4",
+        "wolf_utils": "latest"
     },
     "dependenciesMeta": {
+        "@distube/ytpl@1.2.1": {
+            "unplugged": true
+        },
         "app-builder-bin": {
             "unplugged": true
         },

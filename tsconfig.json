@@ -1,12 +1,14 @@
 {
     "compilerOptions": {
-        "module": "CommonJS",
+        "module": "NodeNext",
         "target": "ESNext",
         "rootDir": "src",
         "outDir": "dist",
         "sourceMap": true,
-        
-        "sourceRoot": "../src",
+        "resolvePackageJsonExports": true,
+        "resolveJsonModule": true,
+        "resolvePackageJsonImports": true,
+        // "sourceRoot": "../src",
         "diagnostics": true,
         "extendedDiagnostics": true,
         "removeComments": true,

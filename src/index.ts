@@ -25,15 +25,17 @@ import ytdl = require("@distube/ytdl-core")
 import ytpl = require("ytpl")
 import express = require("express")
 import dayjs = require("dayjs")
-import _random = require("./libs/random")
+import _random = require("wolf_utils/random.js")
 import events = require("events")
 import os = require('os')
 import updater = require("electron-updater")
+import readline = require("readline")
 
 let eapp = electron.app
+electron.nativeTheme.themeSource = "dark"
 //@ts-ignore
 let ffmpegPath: string = _ffmpegPath
-let random = new _random(4, 9)
+let random = _random.createRandom(4, 9)
 let app = express()
 
 let autoUpdater: typeof updater.autoUpdater = updater.autoUpdater
@@ -102,14 +104,49 @@ type infoPL = {
     query: ytpl.Item
 }
 
+let getIdFromHandle = async (url: string) => {
+    let html: string[] = []
+
+    await new Promise((resolve) => {
+        https.get(url, (stream) => {
+            stream.on("data", (c) => {
+                html.push(c.toString('utf-8'));
+            })
+            stream.on("end", resolve);
+        })
+    })
+
+    if (html.length == 0) {
+        return null;
+    }
+    let inital = html.filter(v => v.includes("/channel/"))
+    if (inital.length == 0) {
+        return null
+    }
+    let url_tags = inital[0].split("<").filter(v => v.includes("/channel/"))
+    if (url_tags.length == 0) {
+        return null
+    }
+    let properties = url_tags[0].split(' ').filter(v => v.includes("/channel/"))
+    if (properties.length == 0) {
+        return null
+    }
+
+    return properties[0].replace('href=', '').replaceAll('"', '').replace('https://www.youtube.com/channel/', '').replace('>', '')
+}
+
 electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, customRegExp: string[] = []) => {
     let items: { title: string, query: ytpl.Item }[] = []
     let pl: ytpl.Result
     try {
-        pl = await ytpl(link, { limit: Infinity })
+            pl = await ytpl(link, { limit: Infinity })
     } catch {
-        ev.sender.send("error", "Error getting playlist info")
-        return
+        try {
+            pl = await ytpl(await getIdFromHandle(link), {limit: Infinity})
+        } catch {
+            ev.sender.send("error", "Error getting playlist info")
+            return
+        }
     }
     if (pl == null) {
         ev.sender.send("error", "No Playlist Found")
@@ -220,13 +257,6 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
         fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
         if (!data.audioOnly) {
             info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", data.title, "Season 00") ).replace("${replace_title}", `S00e${thisTrack} - `)
-            https.get(info.query.bestThumbnail.url, (res) => {
-                let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
-                res.pipe(stream)
-                stream.on("finish", () => {
-                    stream.close()
-                })
-            })
         } else {
             info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", data.title)).replace("${replace_title}", ''/* `${thisTrack} -` */)
             fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", data.title, "track.json"), JSON.stringify({ track }))
@@ -241,12 +271,25 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
         }
         fs.writeFileSync(info.output, "Checker File")
 
-        nextevent.once(`startdl_${info.id}`, () => {
+        nextevent.once(`startdl_${info.id}`, async () => {
             downloading++
             let vidDone = false
             let audioDone = false
             let videoFile: fs.WriteStream
             let videoStream: import("stream").Readable
+            await new Promise<void>(r => {
+                https.get(info.query.bestThumbnail.url, (res) => {
+                    let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
+                    res.pipe(stream)
+                    stream.on("finish", () => {
+                        r()
+                        stream.close()
+                    })
+                    res.on("error", () => {
+                        r()
+                    })
+                })
+            })
             try {
                 if (!data.audioOnly) {
                     videoFile = fs.createWriteStream(info.video, { autoClose: true })
@@ -266,9 +309,15 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                         let ffmpeg: cp.ChildProcess
                         if (data.audioOnly) {
                             ffmpeg = cp.spawn(ffmpegPath, [
-                                '-i', `${info.audio}`,
+                                '-stats',
+                                '-progress', 'pipe:3',
+                                '-i', info.audio,
+                                '-i', info.thumbnail,
                                 '-map', '0:a',
                                 '-c:a', 'mp3',
+                                '-map', '1:v',
+                                '-c:v:0', 'mjpeg',
+                                '-disposition:v:0', 'attached_pic',
                                 '-metadata', `album=${data.title}`,
                                 '-metadata', `album_artist=Various Artists`,
                                 '-metadata', `artist=${info.query.author.name || "No Artist"}`,
@@ -277,19 +326,23 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                                 '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
                                 '-metadata', `performer=${info.query.author.name || "No Performer"}`,
                                 '-metadata', `disc=1`,
-                                '-metadata', `genre=YoutTube Video`,
+                                '-metadata', `genre=YouTube Video`,
+                                '-metadata', `comment="${info.query.url}"`,
                                 '-metadata', `title=${info.title}`,
                                 '-metadata', `track=${info.track}`,
                                 "-y",
                                 `${info.output}`
                             ], {
                                 shell: false,
+                                stdio: ['inherit', 'pipe', 'pipe', 'pipe']
                             })
                         } else {
                             ffmpeg = cp.spawn(ffmpegPath, [
-                                '-i', `${info.video}`,
-                                '-i', `${info.audio}`,
-                                '-i', `${info.thumbnail}`,
+                                '-stats',
+                                '-progress', 'pipe:3',
+                                '-i', info.video,
+                                '-i', info.audio,
+                                '-i', info.thumbnail,
                                 '-map', '0:v',
                                 '-c:v:0', 'copy',
                                 '-map', '1:a',
@@ -311,18 +364,48 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
                                 `${info.output}`
                             ], {
                                 shell: false,
+                                stdio: ['inherit', 'pipe', 'pipe', 'pipe']
                             })
                         }
+                        let ffprogress = readline.createInterface(ffmpeg.stdio[3] as import('stream').Readable)
+                        let ffstderr = readline.createInterface(ffmpeg.stderr)
+                        let total = Infinity
+                        ffprogress.on('line', (data) => {
+                            if (data.startsWith('out_time_ms')) {
+                                let value = parseInt(data.replace("out_time_ms=", '')) / 1000
+                                if (isNaN(value) || value < 0) {
+                                    return;
+                                }
+                                ev.sender.send('progress', info.title, 'process', value, total)
+                            }
+                        })
+                        ffstderr.on('line', (data) => {
+                            if (data.includes("duration")) {
+                                let cliped = data.trim().toLowerCase().replace(/duration: ?([0-9:.]+).*/i, '$1')
+                                let split = cliped.split(":")
+                                // In ms
+                                let new_total = (
+                                    (parseFloat(split[0]) * 60 * 60) +
+                                    (parseFloat(split[1]) * 60) +
+                                    (parseFloat(split[2]))
+                                ) * 1000
+                                if (total < new_total) {
+                                    total = new_total
+                                }
+                            }
+                        })
                         ffmpeg.on("error", () => { ffmpegLog.write(onError) })
                         ffmpeg.stderr.pipe(ffmpegLog, { end: true })
                         ffmpeg.stdout.pipe(ffmpegLog, { end: true })
                         ffmpeg.stdout.pipe(process.stdout, { end: true })
                         ffmpeg.on("exit", () => {
                             ffmpegLog.close()
+                            ffprogress.close()
+                            ffstderr.close()
                             if (!data.audioOnly) {
                                 fs.rmSync(info.video)
-                                fs.rmSync(info.thumbnail)
                             }
+                            fs.rmSync(info.thumbnail)
                             fs.rmSync(info.audio)
                             mainWin.webContents.send("log", `${info.title} Done`)
                             nextevent.emit("doneproc")
@@ -431,13 +514,6 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
         if (!audioOnly) {
             info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", "Mixed", "Season 00") + path.sep).replace("${replace_title} ", `S00e${thisTrack} -`)
             fs.writeFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), JSON.stringify({ track }))
-            https.get(info.query.thumbnails[0].url, (res) => {
-                let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
-                res.pipe(stream)
-                stream.on("finish", () => {
-                    stream.close()
-                })
-            })
         } else {
             info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", "Mixed") + path.sep).replace("${replace_title} ", '' /* `${thisTrack} -` */)
             fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), JSON.stringify({ track }))
@@ -448,19 +524,40 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
         } else {
             fs.writeFileSync(info.output, "Checker File")
         }
-        nextevent.once(`startdl_${info.id}`, () => {
+        nextevent.once(`startdl_${info.id}`, async () => {
             downloading++
             let vidDone = false
             let audioDone = false
             let videoFile: fs.WriteStream
             let videoStream: import("stream").Readable
+            await new Promise<void>(r => {
+                https.get(info.query.thumbnails[0].url, (res) => {
+                    let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
+                    res.pipe(stream)
+                    stream.on("finish", () => {
+                        r()
+                        stream.close()
+                    })
+                    res.on("error", () => {
+                        r()
+                    })
+                })
+            })
             try {
                 if (!audioOnly) {
                     videoFile = fs.createWriteStream(info.video, { autoClose: true })
                     videoStream = ytdl(link, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestvideo" })
+                    videoStream.on("progress", (length, downloaded, total) => {
+                        console.log(downloaded, total)
+                        ev.sender.send('progress', info.title, 'dl', downloaded, total, 'video')
+                    })
                 }
                 let audioFile = fs.createWriteStream(info.audio, { autoClose: true })
                 let audioStream = ytdl(link, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestaudio" })
+                audioStream.on("progress", (length, downloaded, total) => {
+                        console.log(downloaded, total)
+                    ev.sender.send('progress', info.title, 'dl', downloaded, total, 'audio')
+                })
                 let finsh = () => {
                     nextevent.emit("donedl")
                     downloading--
@@ -473,16 +570,23 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                         let ffmpeg: cp.ChildProcess
                         if (audioOnly) {
                             ffmpeg = cp.spawn(ffmpegPath, [
-                                '-i', `${info.audio}`,
+                                '-stats',
+                                '-progress', 'pipe:3',
+                                '-i', info.audio,
+                                '-i', info.thumbnail,
                                 '-map', '0:a',
                                 '-c:a', 'mp3',
+                                '-map', '1:v',
+                                '-c:v:0', 'mjpeg',
+                                '-disposition:v:0', 'attached_pic',
                                 '-metadata', `title=${title}`,
                                 '-metadata', `artist=${info.query.author.name || "No Artist"}`,
                                 '-metadata', `author=${info.query.author.name || "No Author"}`,
                                 '-metadata', `composer=${info.query.author.name || "No Composer"}`,
                                 '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
                                 '-metadata', `performer=${info.query.author.name || "No Performer"}`,
-                                '-metadata', `genre=YoutTube Video`,
+                                '-metadata', `genre=YouTube Video`,
+                                '-metadata', `comment="${link}"`,
                                 '-metadata', `album_artist=Various Artists`,
                                 '-metadata', `track=${info.track}`,
                                 '-metadata', `disc=1`,
@@ -492,9 +596,12 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                                 output
                             ], {
                                 shell: false,
+                                stdio: ['inherit', 'pipe', 'pipe', 'pipe']
                             })
                         } else {
                             ffmpeg = cp.spawn(ffmpegPath, [
+                                '-stats',
+                                '-progress', 'pipe:3',
                                 '-i', info.video,
                                 '-i', info.audio,
                                 '-i', info.thumbnail,
@@ -518,6 +625,7 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                                 info.output
                             ], {
                                 shell: false,
+                                stdio: ['inherit', 'pipe', 'pipe', 'pipe']
                             })
                         }
                         ffmpeg.on("error", () => { ffmpegLog.write(onError) })
@@ -525,12 +633,44 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
                         ffmpeg.stderr.pipe(process.stderr, { end: true })
                         ffmpeg.stdout.pipe(ffmpegLog, { end: true })
                         ffmpeg.stdout.pipe(process.stdout, { end: true })
+                        let ffprogress = readline.createInterface(ffmpeg.stdio[3] as import('stream').Readable)
+                        let ffstderr = readline.createInterface(ffmpeg.stderr)
+                        let total = Infinity
+                        ffprogress.on('line', (data) => {
+                            if (data.startsWith('out_time_ms')) {
+                                let value = parseInt(data.replace("out_time_ms=", '')) / 1000
+                                if (isNaN(value) || value < 0) {
+                                    return;
+                                }
+                                ev.sender.send('progress', info.title, 'process', value, total)
+                            }
+                            if (data == "progress=end") {
+                                ev.sender.send('progress', info.title, 'process', 1, 1)
+                            }
+                        })
+                        ffstderr.on('line', (data) => {
+                            if (data.includes("duration")) {
+                                let cliped = data.trim().toLowerCase().replace(/duration: ?([0-9:.]+).*/i, '$1')
+                                let split = cliped.split(":")
+                                // In ms
+                                let new_total = (
+                                    (parseFloat(split[0]) * 60 * 60) +
+                                    (parseFloat(split[1]) * 60) + 
+                                    (parseFloat(split[2]))
+                                ) * 1000
+                                if (total < new_total) {
+                                    total = new_total
+                                }
+                            }
+                        })
                         ffmpeg.on("exit", () => {
                             ffmpegLog.close()
+                            ffprogress.close()
+                            ffstderr.close()
                             if (!audioOnly) {
                                 fs.rmSync(info.video)
-                                fs.rmSync(info.thumbnail)
                             }
+                            fs.rmSync(info.thumbnail)
                             fs.rmSync(info.audio)
                             ev.sender.send("log", `${info.title} Done`)
                             nextevent.emit("doneproc")
@@ -589,9 +729,10 @@ electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, cus
 
 })
 
-electron.ipcMain.handle("valid", (ev, link: string) => {
+electron.ipcMain.handle("valid", async (ev, link: string) => {
     try {
-        return ytpl.validateID(link) ? "pl" : ytdl.validateURL(link)
+        return (ytpl.validateID(link) ? "pl" : ytdl.validateURL(link)) || 
+            ((link.includes('youtube.com/@') && await getIdFromHandle(link) != null) ? 'pl' : false)
     } catch (err) {
         return false
     }
@@ -691,19 +832,19 @@ let id = fs.existsSync(path.resolve(temp, "id.json")) ? JSON.parse(fs.readFileSy
 let track = 0
 
 let startServer = (): number => {
-    let _port = random.num()
-    if (_port < 1024) {
-        return startServer()
-    } else {
-        try {
-            server.listen(_port, "localhost")
-            return _port;
-        } catch (err) {
-            if (err.code == "EADDRINUSE") {
-                return startServer()
-            } else {
-                throw err
-            }
+    let _port = random.num(65535, 1024)
+    // if (_port < 1024) {
+    //     return startServer()
+    // } else {
+    // }
+    try {
+        server.listen(_port, "localhost")
+        return _port;
+    } catch (err) {
+        if (err.code == "EADDRINUSE") {
+            return startServer()
+        } else {
+            throw err
         }
     }
 }
@@ -772,15 +913,27 @@ eapp.on("window-all-closed", close)
 
 eapp.whenReady().then(() => {
     console.log("Started!")
-    console.log(config)
     if (fs.existsSync(path.resolve(eapp.getPath("userData"), "config.json"))) {
         config = {...config, ...JSON.parse(fs.readFileSync(path.resolve(eapp.getPath("userData"), "config.json"), { encoding: 'utf-8' }), (_key, val) => (val == "infinity" ? Infinity : val))}
     } else {
         fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, null, 4))
     }
-    console.log(config)
     port = startServer()
     mainWin = createWin(`http://localhost:${port}`, path.resolve(__dirname, "preloads", "index.js"))
-    autoUpdater.checkForUpdates().catch((e => null))
+    autoUpdater.checkForUpdates()
     nextevent.setMaxListeners(config.concurent_process + config.concurent_dl + 7)
+    let value = 0
+    let type = false
+    // setInterval(() => {
+    //     if (value == 100) {
+    //         type = !type
+    //         value = 0
+    //         mainWin.webContents.send('progress', 'Hello, World! A programmer\'s first step', 'process', 0, 100, 'audio')
+    //     }
+    //     if (!type) {
+    //         mainWin.webContents.send('progress', 'Hello, World! A programmer\'s first step', 'dl', value, 100, 'video')
+    //     }
+    //     mainWin.webContents.send('progress', 'Hello, World! A programmer\'s first step', type ? 'process' : 'dl', value, 100, 'audio')
+    //     value++
+    // }, 50)
 })/* .then(mainVid) */

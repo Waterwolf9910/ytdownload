@@ -1,8 +1,9 @@
 import electron = require("electron/renderer")
-let logListener: (val) => null = () => null
-let errListener: (val) => null = () => null
-let dLListeners: (val) => null = () => null
-let plListener: (val) => null = () => null
+let logListener: import('../../static_src/global').listener = () => null
+let errListener: import('../../static_src/global').listener = () => null
+let dLListener: import('../../static_src/global').listener = () => null
+let plListener: import('../../static_src/global').playlistListener = () => null
+let progressListener: import('../../static_src/global').progressListener = () => null
 
 electron.ipcRenderer.on("log", (_, msgType) => {
     logListener(msgType)
@@ -13,13 +14,16 @@ electron.ipcRenderer.on("error", (_, errorType) => {
 })
 
 electron.ipcRenderer.on("update", (_, info) => {
-    dLListeners(info)
+    dLListener(info)
 })
 
 electron.ipcRenderer.on("selector", (ev, data) => {
     plListener(data)
 })
 
+electron.ipcRenderer.on("progress", (ev, title, type, value, max, dl_type) => {
+    progressListener(title, type, value, max, dl_type)
+})
 
 let concurrency = (param1, param2) => {
     return electron.ipcRenderer.invoke("set_concurrency", param1, param2)
@@ -34,7 +38,11 @@ let setErrorListener = (listenerFunc) => {
 }
 
 let setDLListener = (listenerFunc) => {
-    dLListeners = listenerFunc
+    dLListener = listenerFunc
+}
+
+let setProgressListener = (listenerFunc) => {
+    progressListener = listenerFunc
 }
 
 let plRequest = (param1, param2, param3) => {
@@ -70,6 +78,7 @@ electron.contextBridge.exposeInMainWorld("api", {
     setErrorListener,
     setDLListener,
     setPLListener,
+    setProgressListener,
     concurrency,
     plRequest,
     downloadVid,

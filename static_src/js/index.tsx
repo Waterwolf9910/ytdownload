@@ -3,18 +3,30 @@ import utils from  "./utils"
 import Video from "./components/video"
 import moon_stars from "../bootstrap-icons-1.11.1/moon-stars.svg"
 import sun_fill from "../bootstrap-icons-1.11.1/sun-fill.svg"
+import VideoProgress from "./components/video_progress"
 
 let valid = false
 let isPL = false
 let logs_list: string[] = []
 let errors_list: string[] = []
 
+let progress_list: {[key: string]: {
+    dl_a_max: number
+    dl_v_max: number
+    dl_a_cur: number,
+    dl_v_cur: number,
+    proc_max: number
+    proc_cur: number,
+}} = {}
+// TODO: Collapsable progress bars
+//TODO: Modify most refs to states
 const page = () => {
     let [selected_tab, set_tab] = react.useState(0)
     //@ts-ignore
     let [current_list, set_list] = react.useState<{ items: { title: string, query: import("ytpl").Item }[], title: string, url: string }>({})
     let [video_list, set_videos] = react.useState<typeof current_list["items"]>([])
     let [audioOnly, set_ao] = react.useState(false)
+    let [refresh, set_refresh] = react.useState(0)
     let url = react.useRef<HTMLInputElement>(null)
     let audio = react.useRef<HTMLInputElement>(null)
     let reverse = react.useRef<HTMLInputElement>(null)
@@ -27,10 +39,12 @@ const page = () => {
     let regex_tester = react.useRef<HTMLInputElement>(null)
     let regex_result = react.useRef<HTMLInputElement>(null)
     let regex_flags = react.useRef<HTMLSelectElement>(null)
-    let progressBar = react.useRef<HTMLProgressElement>(null)
+    let update_bar = react.useRef<HTMLProgressElement>(null)
     let check = react.useRef<HTMLTextAreaElement>(null)
     let color_mode = react.useRef<HTMLImageElement>(null)
 
+    // let cbs: {[key: string]: Parameters<Required<import('./components/video_progress').props>['cbs']>[0]} = {}
+    
     let sendReq = () => {
         if (valid && isPL) {
             // let regex = regexp.value.split(",")
@@ -45,26 +59,20 @@ const page = () => {
     let onInput = async () => {
         try {
             new URL(url.current!.value)
+            let _valid = await window.api.valid(url.current!.value)
             check.current!.style.backgroundColor = "green"
-            if (!(await window.api.valid(url.current!.value))) {
+            if (!_valid) {
                 check.current!.style.backgroundColor = "yellow"
                 reverse.current!.disabled = true
                 submit.current!.disabled = true
                 valid = false
                 isPL = false
-            } else if (await window.api.valid(url.current!.value) == "pl") {
-                check.current!.style.backgroundColor = "green"
-                reverse.current!.disabled = false
-                submit.current!.disabled = false
-                isPL = true
-                valid = true
-            } else {
-                isPL = false
-                check.current!.style.backgroundColor = "green"
-                reverse.current!.disabled = true
-                submit.current!.disabled = false
-                valid = true
+                return
             }
+            valid = true
+            submit.current!.disabled = false
+            reverse.current!.disabled = !(isPL = _valid == 'pl')
+            check.current!.style.backgroundColor = _valid == 'pl' ? "aqua" : 'green'
         } catch (err) {
             submit.current!.disabled = true
             reverse.current!.disabled = true
@@ -118,8 +126,8 @@ const page = () => {
                 percent: number
                 bytesPerSecond: number
             } = JSON.parse(_info)
-            progressBar.current!.style.display = "inline-block"
-            progressBar.current!.value = info.percent
+            update_bar.current!.style.display = "inline-block"
+            update_bar.current!.value = info.percent
         })
 
         window.api.setPLListener(data => {
@@ -134,9 +142,38 @@ const page = () => {
             color_mode.current!.style.filter = theme == "dark" ? 'invert(100%)' : ''
         })
 
+
         submit.current!.disabled = true
 
     }, [])
+
+    react.useEffect(() => {
+        window.api.setProgressListener((title, type, value, max, dl_type) => {
+            // let refresh = false
+            // if (!progress_list[title]) {
+                // refresh = true
+                // }
+            set_refresh(refresh + 1)
+            // @ts-ignore
+            progress_list[title] ??= {}
+            if (type == 'process') {
+                if (value == max) {
+                    delete progress_list[title]
+                }
+                progress_list[title].proc_cur = value
+                progress_list[title].proc_max = max
+                return
+            }
+            if (dl_type == 'audio') {
+                progress_list[title].dl_a_cur = value
+                progress_list[title].dl_a_max = max
+                return
+            }
+            progress_list[title].dl_v_cur = value
+            progress_list[title].dl_v_max = max
+        })
+        return () => window.api.setProgressListener(() => null)
+    }, [refresh])
 
     let main: JSX.Element = <></>
 
@@ -186,7 +223,7 @@ const page = () => {
                         <input type="text" title="regexp_result" ref={regex_result} readOnly style={{ pointerEvents: "none" }} />
                     </div>
                     <div>
-                        <input type="button" ref={submit} value="submit" size={50} onMouseDown={sendReq} />
+                        <input type="button" ref={submit} value="submit" size={50} onClick={sendReq} />
                     </div>
                 </div>
                 <div className="row center_items">
@@ -225,12 +262,22 @@ const page = () => {
         <header>
             <div>
                 <input type="button" value="Select Output Location" onClick={window.api.selectOutput} />
-                <img title="theme select" ref={color_mode} style={{marginLeft: "10px", cursor: "pointer"}} onClick={async _e => {
+                <img title="theme select" ref={color_mode} style={{marginLeft: "10px", cursor: "pointer", verticalAlign: 'middle'}} onClick={async _e => {
                     let theme = (await utils.loadTheme()) == "dark" ? "light" : "dark"
                     utils.setTheme(theme)
                     color_mode.current!.src = theme == "dark" ? moon_stars : sun_fill
                     color_mode.current!.style.filter = theme == "dark" ? 'invert(100%)' : ''
                 }}/>
+            </div>
+            <div className="progress">
+                {Object.entries(progress_list).map(v => {
+                    let info = v[1]
+                    if (info.proc_cur > 0) {
+                        return <VideoProgress key={v[0]} init={info.proc_cur} max={info.proc_max} title={v[0]} /* cbs={(sv) => cbs[v[0]] = sv} */ alt />
+                    }
+                    return <VideoProgress key={v[0]} init={(info.dl_a_cur || 0) + (info.dl_v_cur || 0)} max={(info.dl_a_max || 0) + (info.dl_v_cur || 0)} title={v[0]} /* cbs={(sv) => cbs[v[0]] = sv} */ />
+                })}
+                {/* <VideoProgress title="Hello World" download_max={100} process_max={100} cbs={(d, p) => setTimeout(() => p(50))}/> */}
             </div>
             <div>
                 <button className="btn btn-primary" onClick={() => set_tab(0)}>Main Page</button>
@@ -242,8 +289,8 @@ const page = () => {
                     <label htmlFor="proc">Limit Processing</label>
                 </div>
                 <div className="row" style={{justifyContent: "space-around"}}>
-                    <input type="text" defaultValue="5" id="dl" className="small_number" />
-                    <input type="text" defaultValue="5" id="proc" className="small_number" />
+                    <input type="text" defaultValue="5" id="dl" ref={dl} className="small_number" />
+                    <input type="text" defaultValue="5" id="proc" ref={proc} className="small_number" />
                 </div>
                 <div className="row center_items">
                     <input type="button" value="Change" onClick={async () => {
@@ -254,6 +301,7 @@ const page = () => {
                         }
                     }}/>
                 </div>
+
             </div>
         </header>
         <main>
@@ -261,7 +309,7 @@ const page = () => {
         </main>
         <div>
             <footer>
-                <progress id="dl-bar" max="100" value="0" style={{display: "none"}}></progress>
+                <progress ref={update_bar} max="100" value="0" style={{display: "none"}}></progress>
             </footer>
         </div>
     </>

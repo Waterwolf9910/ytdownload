@@ -1,0 +1,56 @@
+diff --git a/lib/main.js b/lib/main.js
+index 5c31bbfe5d9328f3f9b08c3f5084b24f7a23e07a..1c74e5e2e89753a21888b4846cfde9b314864a42 100644
+--- a/lib/main.js
++++ b/lib/main.js
+@@ -147,6 +147,9 @@ main.validateID = linkOrId => {
+   if (CHANNEL_REGEX.test(linkOrId)) {
+     return true;
+   }
++  if (/^(LL|LM)/.test(linkOrId)) {
++    return true;
++  }
+   // Playlist link provided
+   const parsed = new URL(linkOrId, BASE_PLIST_URL);
+   if (!YT_HOSTS.includes(parsed.host)) return false;
+@@ -155,6 +158,9 @@ main.validateID = linkOrId => {
+     if (PLAYLIST_REGEX.test(listParam) || ALBUM_REGEX.test(listParam)) {
+       return true;
+     }
++    if (/^(LL|LM)/.test(listParam)) {
++      return true;
++    }
+     // Mixes currently not supported
+     // They would require fetching a video page & resolving the side-loaded playlist
+     if (listParam && listParam.startsWith('RD')) {
+@@ -197,6 +203,9 @@ main.getPlaylistID = async linkOrId => {
+   if (CHANNEL_REGEX.test(linkOrId)) {
+     return `UU${linkOrId.substr(2)}`;
+   }
++  if (/^(LL|LM)/.test(linkOrId)) {
++    return linkOrId;
++  }
+   // Playlist link provided
+   const parsed = new URL(linkOrId, BASE_PLIST_URL);
+   if (!YT_HOSTS.includes(parsed.host)) throw new Error('not a known youtube link');
+@@ -205,6 +214,9 @@ main.getPlaylistID = async linkOrId => {
+     if (PLAYLIST_REGEX.test(listParam) || ALBUM_REGEX.test(listParam)) {
+       return listParam;
+     }
++    if (/^(LL|LM)/.test(listParam)) {
++      return listParam;
++    }
+     // Mixes currently not supported
+     // They would require fetching a video page & resolving the side-loaded playlist
+     if (listParam && listParam.startsWith('RD')) {
+diff --git a/package.json b/package.json
+index 96bfc222dfa238af7025e339f1dcd957a1a07994..93afacbae15ece1ea1a0182ee85f3a3eb6e63767 100644
+--- a/package.json
++++ b/package.json
+@@ -41,5 +41,6 @@
+   },
+   "engines": {
+     "node": ">=8"
+-  }
++  },
++  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+ }

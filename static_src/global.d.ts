@@ -9,6 +9,7 @@ type playlistListener = (vidList: {
     title: string,
     url: string
 }) => any
+type progressListener = (title: string, type: 'dl' | 'process', value: number, max: number, dl_type: 'audio' | 'video') => any
 
 declare global {
     interface Window {
@@ -17,6 +18,7 @@ declare global {
             setErrorListener: (listenerFunc: listener) => void,
             setDLListener: (listenerFunc: listener) => void,
             setPLListener: (listenerFunc: playlistListener) => void
+            setProgressListener: (listenerFunc: progressListener) => void,
             concurrency: (dl: number | string, proc: number | string) => Promise<string>
             plRequest: (link: string, reversePl: boolean, customRegExp: string[]) => void,
             downloadPl: (list: {title: string, query: ytpl.Item}[], audioOnly: boolean, title: string) => void
