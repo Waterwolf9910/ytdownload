@@ -1,3 +1,4 @@
+// TODO: Use ytdl.createAgent for priv + age restricted videos
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // process.env.ELECTRON_ENABLE_LOGGING='true'
 import electron = require("electron")
@@ -18,23 +19,26 @@ Module.prototype.require = function () {
 }
 
 import _ffmpegPath = require("ffmpeg-static")
-import cp = require("child_process")
+// import child_process = require("child_process")
 import http = require("http")
 import https = require("https")
 import ytdl = require("@distube/ytdl-core")
 import ytpl = require("ytpl")
 import express = require("express")
-import dayjs = require("dayjs")
+// import dayjs = require("dayjs")
 import _random = require("wolf_utils/random.js")
-import events = require("events")
+// import events = require("events")
 import os = require('os')
 import updater = require("electron-updater")
-import readline = require("readline")
+// import readline = require("readline")
+// import FuncQueue = require("./libs/func_queue")
+import Queue = require("./libs/queues")
+process.env["YTDL_NO_UPDATE"] = "1"
 
 let eapp = electron.app
 electron.nativeTheme.themeSource = "dark"
 //@ts-ignore
-let ffmpegPath: string = _ffmpegPath
+// let ffmpegPath: string = _ffmpegPath
 let random = _random.createRandom(4, 9)
 let app = express()
 
@@ -78,19 +82,20 @@ autoUpdater.on("download-progress", async (info) => {
 autoUpdater.on("checking-for-update", () => {
     console.log("Checking")
 })
+
 let temp = path.resolve(eapp.getPath("userData"), "./temp")
 fs.mkdirSync(path.resolve(eapp.getPath("userData"), "ffmpeg"), { recursive: true })
-let config: {
-    output: string,
-    concurent_dl: number,
-    concurent_process: number,
-    theme: "light" | "dark"
-} = {
-    concurent_dl: os.cpus().length,
-    concurent_process: os.cpus().length,
+let base_config: program_config = {
+    concurrent_dl: os.cpus().length / 2,
+    concurrent_process: os.cpus().length / 2,
     output: path.resolve(eapp.getPath("desktop"), "./media"),
-    theme: "dark"
+    audio_format: 'mp3',
+    video_format: 'mp4',
+    theme: "dark",
+    cookies: []
 }
+
+let config = base_config
 fs.rmSync(temp, { recursive: true, force: true })
 fs.mkdirSync(temp, { recursive: true })
 type infoPL = {
@@ -136,13 +141,14 @@ let getIdFromHandle = async (url: string) => {
 }
 
 electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, customRegExp: string[] = []) => {
+    let agent = ytdl.createAgent(config.cookies, {})
     let items: { title: string, query: ytpl.Item }[] = []
     let pl: ytpl.Result
     try {
-            pl = await ytpl(link, { limit: Infinity })
+            pl = await ytpl(link, { limit: Infinity, requestOptions: {dispatcher: agent.dispatcher} })
     } catch {
         try {
-            pl = await ytpl(await getIdFromHandle(link), {limit: Infinity})
+            pl = await ytpl(await getIdFromHandle(link), { limit: Infinity, requestOptions: { dispatcher: agent.dispatcher } })
         } catch {
             ev.sender.send("error", "Error getting playlist info")
             return
@@ -159,7 +165,8 @@ electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, cus
         let title = query.title
         for (let regexp of customRegExp) {
             try {
-                let rex = new RegExp(regexp)
+                let split = regexp.split('\\,')
+                let rex = new RegExp(split[0], split[1])
                 title = title.replace(rex, '')
             } catch (err) {
                 ev.sender.send("error", "Invalid Regular Expression")
@@ -177,63 +184,303 @@ electron.ipcMain.handle("getpl", async (ev, link: string, reversePL = false, cus
     ev.sender.send("selector", { items, title: pl.title, url: pl.url })
 })
 
-let downloading = 0
-let processing = 0
-let dlqueue: number[] = []
-let procqueue: number[] = []
+// let dlqueue = new FuncQueue(config.concurent_dl, true)
+// let procqueue = new FuncQueue(config.concurent_process, true)
+let queue = new Queue(config.concurrent_dl, true)
 
-class NextEvents extends events {
-    #pwlck = 0
-
-    setLock(): void {
-        if (!electron.powerSaveBlocker.isStarted(this.#pwlck)) {
-            this.#pwlck = electron.powerSaveBlocker.start("prevent-app-suspension")
-        }
-    }
-
-    once(eventName: string, listener: (...args: unknown[]) => void): this {
-        return super.once(eventName, listener)
-    }
-
-    emit(eventName: string | symbol, ...args: unknown[]): boolean {
-        if (processing < 2) {
-            electron.powerSaveBlocker.stop(this.#pwlck)
-        }
-        return super.emit(eventName, ...args)
-    }
+/* interface pi {
+    from_pl: boolean
+    audio_path: string,
+    thumbnail_path: string,
+    video_path: string,
+    output_path: string,
+    title: string,
+    author_name: string,
+    url: string,
+    track: number,
+    thumbnail_url: string,
+    // audio_url: string,
+    // video_url: string
 }
 
-let nextevent = new NextEvents()
+interface single_process_info extends pi{
+    from_pl: false
+}
 
-nextevent.on("donedl", () => {
-    if (dlqueue.length > 0) {
-        nextevent.emit(`startdl_${dlqueue[ 0 ]}`)
-        dlqueue.shift()
+interface pl_process_info extends pi {
+    from_pl: true
+    playlist_title: string
+    playlist_author: string
+}
+
+type process_info = single_process_info | pl_process_info
+
+let download_requested = async (audio_only: boolean, info: process_info, sender: electron.WebContents) => {
+    
+    let onError = (err: string | Error) => {
+        sender.send("error", err)
+        return err
+    }
+    let ytdl_download = (video = false) => new Promise<void>( r => {
+        let file = fs.createWriteStream(video ? info.video_path : info.audio_path)
+        let stream = ytdl(info.url, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: video ? 'highestvideo' : "highestaudio" })
+        stream.on("progress", (length, downloaded, total) => {
+            console.log(downloaded, total)
+            sender.send('progress', info.title, 'dl', downloaded, total, video ? 'video' : 'audio')
+        })
+        stream.pipe(file, { end: true })
+        file.on('finish', () => {
+            file.close()
+            r()
+        })
+    })
+    let thumbnail = new Promise<void>(r => {
+        https.get(info.thumbnail_url, res => {
+            let stream = fs.createWriteStream(info.thumbnail_path, { autoClose: true })
+            res.pipe(stream)
+            stream.on('finish', () => {
+                stream.close()
+                r()
+            })
+            res.on('error', () => {
+                stream.close()
+                r();
+            })
+        })
+    })
+    let audio_promise = ytdl_download()
+    let video_promise: Promise<any | void>
+    if (!audio_only) {
+        video_promise = ytdl_download(true)
     }
 
-})
-
-nextevent.on("doneproc", () => {
-    if (procqueue.length > 0) {
-        nextevent.emit(`startproc_${procqueue[ 0 ]}`)
-        procqueue.shift()
+    try {
+        await Promise.allSettled([
+            thumbnail,
+            audio_promise,
+            video_promise
+        ])
+    } catch {
+        onError(`Error Downloading: ${info.title}`)
+        return
     }
-})
 
-electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean, title: string }) => {
-    nextevent.setLock()
+    procqueue.add(ffmpeg_process, audio_only, info, sender)
+}
+
+let addition_options = (audio: boolean) => {
+    if (!audio) {
+        switch (config.video_format) {
+            case "av1": {
+                return [
+                    '-c:a', 'opus',
+                    '-compression_level', '10', // Slowest encode - highest quality
+                    '-application', 'audio',
+                    '-f', 'av1',
+                    '-c:v', 'libaom-av1',
+                    '-crf', '0'
+                ]
+            }
+            case "webp": {
+                return [
+                    '-c:a', 'opus',
+                    '-compression_level', '10', // Slowest encode - highest quality
+                    '-application', 'audio',
+                    '-f', 'webp',
+                    '-c:v', 'libwebp',
+                    '-lossless'
+                ]
+            }
+            case "mp4": {
+                return [
+                    '-c:a', 'opus',
+                    '-compression_level', '10', // Slowest encode - highest quality
+                    '-application', 'audio',
+                    '-f', 'mp4',
+                    '-c:v', 'libx265'
+                ]
+            }
+            case "mkv": {
+                return [
+                    '-c:a', 'opus',
+                    '-compression_level', '10', // Slowest encode - highest quality
+                    '-application', 'audio',
+                    '-f', 'matroska',
+                    '-c:v', 'libx265'
+                ]
+            }
+            case "flv": {
+                return [
+                    '-c:a', 'opus',
+                    '-compression_level', '10', // Slowest encode - highest quality
+                    '-application', 'audio',
+                    '-f', 'flv',
+                    '-c:v', 'libx265'
+                ]
+            }
+        }
+    }
+    switch (config.audio_format) {
+        case "aac": {
+            return [
+                '-f', 'aac',
+                '-c:a', 'aac'
+            ]
+        }
+        case "flac": {
+            return [
+                '-f', 'flac'
+            ]
+        }
+        case "mp3": {
+            return [
+                '-f', 'mp3',
+                '-compression_level', '0', // Slowest encode - highest quality
+                '-metadata:s:v', 'title=Album Cover'
+            ]
+        }
+        case "opus": {
+            return [
+                '-c:a', 'opus',
+                '-compression_level', '10', // Slowest encode - highest quality
+                '-application', 'audio',
+                '-f', 'opus'
+            ]
+        }
+        case "pcm_f32le": {
+            return [
+                '-f', 'f32le'
+            ]
+        }
+        case "pcm_f16le": {
+            return [
+                '-f', 'f16le'
+            ]
+        }
+    }
+    return []
+}
+
+let ffmpeg_process = async (audio_only: boolean, info: process_info, sender: electron.WebContents) => {
+
+    let onError = (err: Error | string) => {
+        if (err) {
+            sender.send("error", `Error Downloading: ${info.title}`)
+            return `Error Downloading: ${info.title}`
+        }
+    }
+    let date = dayjs()
+    fs.appendFileSync(path.resolve(eapp.getPath("userData"), "ffmpeg.log"), `${info.title} started at ${date.format("DD/MM/YYYY HH:mm:ss")}\n`)
+    let ffmpegLog = fs.createWriteStream(path.resolve(eapp.getPath("userData"), "ffmpeg", `${info.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.log`), { autoClose: true, flags: 'a+' })
+    let ffmpeg = child_process.spawn(ffmpegPath, [
+        '-stats',
+        '-progress', 'pipe:3',
+        '-i', info.audio_path,
+        '-i', info.thumbnail_path,
+    ...(audio_only ? [] : [
+        '-i', info.video_path,
+    ]),
+        '-map', '0:a',
+        '-map', '1:v',
+        '-c:v:0', 'mjpeg',
+        '-disposition:v:0', 'attached_pic',
+    ...(audio_only ? [
+    ] : [
+        '-map', '2:v',
+        '-c:v:1', 'copy',
+        '-c:a:0', 'aac',
+    ]),
+        ...addition_options(audio_only),
+    ...(info.from_pl ? [
+        '-metadata', `album=${info.playlist_title}`,
+        '-metadata', `album_artist=${info.playlist_author}`,
+    ] : [
+        '-metadata', `album=Mixed`,
+        '-metadata', `album_artist=Various Artists`,
+    ]),
+        '-metadata', `artist=${info.author_name || "No Artist"}`,
+        '-metadata', `author=${info.author_name || "No Author"}`,
+        '-metadata', `composer=${info.author_name || "No Composer"}`,
+        '-metadata', `publisher=${info.author_name || "No Publisher"}`,
+        '-metadata', `performer=${info.author_name || "No Performer"}`,
+        '-metadata', `comment="${info.url}"`,
+        '-metadata', `genre=YouTube Video`,
+        '-metadata', `title=${info.title}`,
+        '-metadata', `track=${info.track}`,
+        '-metadata', `disc=1`,
+        "-y", info.audio_path
+    ], {
+        shell: false,
+        detached: false,
+        windowsHide: true,
+        killSignal: "SIGKILL",
+        stdio: ['inherit', 'pipe', 'pipe', 'pipe']
+    })
+    ffmpeg.on("error", (err) => { ffmpegLog.write(onError(err)) })
+    ffmpeg.stderr.pipe(ffmpegLog, { end: true })
+    ffmpeg.stdout.pipe(ffmpegLog, { end: true })
+    // ffmpeg.stderr.pipe(process.stderr, { end: true })
+    // ffmpeg.stdout.pipe(process.stdout, { end: true })
+    let ffprogress = readline.createInterface(ffmpeg.stdio[3] as import('stream').Readable)
+    let ffstderr = readline.createInterface(ffmpeg.stderr)
+    let total = Infinity
+    ffprogress.on('line', (data) => {
+        if (data.startsWith('out_time_ms')) {
+            let value = parseInt(data.replace("out_time_ms=", '')) / 1000
+            if (isNaN(value) || value < 0) {
+                return;
+            }
+            sender.send('progress', info.title, 'process', value, total)
+        }
+        if (data == "progress=end") {
+            sender.send('progress', info.title, 'process', 1, 1)
+        }
+    })
+    ffstderr.on('line', (data) => {
+        if (data.includes("duration")) {
+            let cliped = data.trim().toLowerCase().replace(/duration: ?([0-9:.]+).* ?/i, '$1')
+            let split = cliped.split(":")
+            // In ms
+            let new_total = (
+                (parseFloat(split[0]) * 60 * 60) +
+                (parseFloat(split[1]) * 60) +
+                (parseFloat(split[2]))
+            ) * 1000
+            if (total < new_total) {
+                total = new_total
+            }
+        }
+    })
+    await new Promise<void>(r => {
+        ffmpeg.on("exit", () => {
+            ffmpegLog.close()
+            ffprogress.close()
+            ffstderr.close()
+            if (!audio_only) {
+                fs.rmSync(info.video_path)
+            }
+            fs.rmSync(info.thumbnail_path)
+            fs.rmSync(info.audio_path)
+            sender.send("log", `${info.title} Done`)
+            r()
+        })
+    })
+} */
+
+electron.ipcMain.handle("dlpl", (ev, pl_info: infoPL[], audio_only: boolean, title: string) => {
     console.log("Starting pl dl")
     mainWin.webContents.send("log", "Downloading Playlist")
-    if (data.audioOnly) {
-        data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')
-        fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", data.title), { recursive: true })
+    let playlist_title = title
+    if (audio_only) {
+        title = title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')
+        fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", title), { recursive: true })
     } else {
-        data.title = data.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')
-        fs.mkdirSync(path.resolve(config.output, "TV Shows", data.title, "Season 00"), { recursive: true })
+        title = title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')
+        fs.mkdirSync(path.resolve(config.output, "TV Shows", title, "Season 00"), { recursive: true })
     }
-    for (let i = 0; i < data.info.length; i++) {
+    for (let i = 0; i < pl_info.length; i++) {
         let thisId = id++
-        let query = data.info[ i ].query
+        let query = pl_info[ i ].query
         let thisTrack = `${i + 1}`
         if (!thisTrack.startsWith("0")) {
             thisTrack = `0${thisTrack}`
@@ -243,8 +490,8 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
             video: path.resolve(temp, `${thisId}_video.mp4`),
             audio: path.resolve(temp, `${thisId}_audio.mp4`),
             thumbnail: path.resolve(temp, `${thisId}_thumbnail.jpeg`),
-            output: path.join('${dir}', `\${replace_title}${data.info[ i ].title.replaceAll("w/", 'with').replace(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')}.${data.audioOnly ? "mp3" : "mp4"}`),
-            title: data.info[ i ].title.replace(/\.$/, '').replaceAll(/ +/g, ' '),
+            output: path.join('${dir}', `\${replace_title}${pl_info[ i ].title.replaceAll("w/", 'with').replace(/[<>:"/\\|?*]/g, '').replace(/\.$/, '').replaceAll(/ +/g, ' ')}`),
+            title: pl_info[ i ].title.replace(/\.$/, '').replaceAll(/ +/g, ' '),
             track: i + 1,
             query,
         }
@@ -255,478 +502,146 @@ electron.ipcMain.handle("dlpl", (ev, data: { info: infoPL[], audioOnly: boolean,
             }
         }
         fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
-        if (!data.audioOnly) {
-            info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", data.title, "Season 00") ).replace("${replace_title}", `S00e${thisTrack} - `)
+        if (!audio_only) {
+            info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", title, "Season 00") ).replace("${replace_title}", `S00e${thisTrack} - `)
         } else {
-            info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", data.title)).replace("${replace_title}", ''/* `${thisTrack} -` */)
-            fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", data.title, "track.json"), JSON.stringify({ track }))
+            info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", title)).replace("${replace_title}", ''/* `${thisTrack} -` */)
+            // fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", data.title, "track.json"), JSON.stringify({ track }))
         }
-        let alt = 0;
-        let outputRaw = info.output.replace(".mp3", " ").replace(".mp4", " ")
-        let titleRaw = info.title
-        while (fs.existsSync(info.output)) {
-            ++alt;
-            info.output = data.audioOnly ? outputRaw + ` (alternate ${alt}).mp3` : outputRaw + ` (alternate ${alt}).mp4`
-            info.title = titleRaw + ` (alternate ${alt})`
+        let alt_num = 0
+        while (fs.existsSync(info.output + (alt_num > 0 ? `(alternate ${alt_num}).` : '.') + (audio_only ? config.audio_format : config.video_format))) {
+            ++alt_num;
+        }
+        info.output = info.output + (alt_num > 0 ? `(alternate ${alt_num}).` : '.') + (audio_only ? config.audio_format : config.video_format)
+        if (alt_num > 0) {
+            info.title = `${info.title} (alternate ${alt_num})`
         }
         fs.writeFileSync(info.output, "Checker File")
 
-        nextevent.once(`startdl_${info.id}`, async () => {
-            downloading++
-            let vidDone = false
-            let audioDone = false
-            let videoFile: fs.WriteStream
-            let videoStream: import("stream").Readable
-            await new Promise<void>(r => {
-                https.get(info.query.bestThumbnail.url, (res) => {
-                    let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
-                    res.pipe(stream)
-                    stream.on("finish", () => {
-                        r()
-                        stream.close()
-                    })
-                    res.on("error", () => {
-                        r()
-                    })
-                })
-            })
-            try {
-                if (!data.audioOnly) {
-                    videoFile = fs.createWriteStream(info.video, { autoClose: true })
-                    videoStream = ytdl(info.query.url, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestvideo" })
-                }
-                let audioFile = fs.createWriteStream(info.audio, { autoClose: true })
-                let audioStream = ytdl(info.query.url, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestaudio" })
-                let finsh = async () => {
-                    nextevent.emit("donedl")
-                    downloading--
-                    processing++
-                    mainWin.webContents.send("log", `Processing ${info.title}`)
-                    try {
-                        let date = dayjs()
-                        fs.appendFileSync(path.resolve(eapp.getPath("userData"), "ffmpeg.log"), `${info.title} started at ${date.format("DD/MM/YYYY HH:mm:ss")}\n`)
-                        let ffmpegLog = fs.createWriteStream(path.resolve(eapp.getPath("userData"), "ffmpeg", `${info.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.log`), { autoClose: true, flags: 'a+' })
-                        let ffmpeg: cp.ChildProcess
-                        if (data.audioOnly) {
-                            ffmpeg = cp.spawn(ffmpegPath, [
-                                '-stats',
-                                '-progress', 'pipe:3',
-                                '-i', info.audio,
-                                '-i', info.thumbnail,
-                                '-map', '0:a',
-                                '-c:a', 'mp3',
-                                '-map', '1:v',
-                                '-c:v:0', 'mjpeg',
-                                '-disposition:v:0', 'attached_pic',
-                                '-metadata', `album=${data.title}`,
-                                '-metadata', `album_artist=Various Artists`,
-                                '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                '-metadata', `author=${info.query.author.name || "No Author"}`,
-                                '-metadata', `composer=${info.query.author.name || "No Composer"}`,
-                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
-                                '-metadata', `performer=${info.query.author.name || "No Performer"}`,
-                                '-metadata', `disc=1`,
-                                '-metadata', `genre=YouTube Video`,
-                                '-metadata', `comment="${info.query.url}"`,
-                                '-metadata', `title=${info.title}`,
-                                '-metadata', `track=${info.track}`,
-                                "-y",
-                                `${info.output}`
-                            ], {
-                                shell: false,
-                                stdio: ['inherit', 'pipe', 'pipe', 'pipe']
-                            })
-                        } else {
-                            ffmpeg = cp.spawn(ffmpegPath, [
-                                '-stats',
-                                '-progress', 'pipe:3',
-                                '-i', info.video,
-                                '-i', info.audio,
-                                '-i', info.thumbnail,
-                                '-map', '0:v',
-                                '-c:v:0', 'copy',
-                                '-map', '1:a',
-                                '-c:a:0', 'aac',
-                                '-map', '2:v',
-                                '-c:v:1', 'mjpeg',
-                                '-disposition:v:1', 'attached_pic',
-                                '-metadata', `album=${data.title}`,
-                                '-metadata', `album_artist=${data.title}`,
-                                '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                '-metadata', `author=${info.query.author.name || "No Author"}`,
-                                '-metadata', `composer=${info.query.author.name || "No Composer"}`,
-                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
-                                '-metadata', `performer=${info.query.author.name || "No Performer"}`,
-                                '-metadata', `disc=1`,
-                                '-metadata', `title=${info.title.replaceAll('"', '')}`,
-                                '-metadata', `track=${info.track}`,
-                                "-y",
-                                `${info.output}`
-                            ], {
-                                shell: false,
-                                stdio: ['inherit', 'pipe', 'pipe', 'pipe']
-                            })
-                        }
-                        let ffprogress = readline.createInterface(ffmpeg.stdio[3] as import('stream').Readable)
-                        let ffstderr = readline.createInterface(ffmpeg.stderr)
-                        let total = Infinity
-                        ffprogress.on('line', (data) => {
-                            if (data.startsWith('out_time_ms')) {
-                                let value = parseInt(data.replace("out_time_ms=", '')) / 1000
-                                if (isNaN(value) || value < 0) {
-                                    return;
-                                }
-                                ev.sender.send('progress', info.title, 'process', value, total)
-                            }
-                        })
-                        ffstderr.on('line', (data) => {
-                            if (data.includes("duration")) {
-                                let cliped = data.trim().toLowerCase().replace(/duration: ?([0-9:.]+).*/i, '$1')
-                                let split = cliped.split(":")
-                                // In ms
-                                let new_total = (
-                                    (parseFloat(split[0]) * 60 * 60) +
-                                    (parseFloat(split[1]) * 60) +
-                                    (parseFloat(split[2]))
-                                ) * 1000
-                                if (total < new_total) {
-                                    total = new_total
-                                }
-                            }
-                        })
-                        ffmpeg.on("error", () => { ffmpegLog.write(onError) })
-                        ffmpeg.stderr.pipe(ffmpegLog, { end: true })
-                        ffmpeg.stdout.pipe(ffmpegLog, { end: true })
-                        ffmpeg.stdout.pipe(process.stdout, { end: true })
-                        ffmpeg.on("exit", () => {
-                            ffmpegLog.close()
-                            ffprogress.close()
-                            ffstderr.close()
-                            if (!data.audioOnly) {
-                                fs.rmSync(info.video)
-                            }
-                            fs.rmSync(info.thumbnail)
-                            fs.rmSync(info.audio)
-                            mainWin.webContents.send("log", `${info.title} Done`)
-                            nextevent.emit("doneproc")
-                            processing--
-                        })
-                    } catch {
-                        mainWin.webContents.send("error", `Error Downloading: ${info.title}`)
-                        return `Error Downloading: ${info.title}`
-                    }
-                }
-                let checkAndCloseAudio = () => {
-                    if (vidDone || data.audioOnly) {
-                        nextevent.once(`startproc_${info.id}`, finsh)
-                        if (processing < config.concurent_process) {
-                            nextevent.emit(`startproc_${info.id}`)
-                        } else {
-                            procqueue.push(info.id)
-                        }
-                    } else if (!audioDone) {
-                        audioFile.close()
-                        audioDone = true;
-                    }
-                }
-                let checkAndCloseVideo = () => {
-                    if (audioDone) {
-                        nextevent.once(`startproc_${info.id}`, finsh)
-                        if (processing < config.concurent_process) {
-                            nextevent.emit(`startproc_${info.id}`)
-                        } else {
-                            procqueue.push(info.id)
-                        }
-                    } else if (!vidDone) {
-                        videoFile.close()
-                        vidDone = true;
-                    }
-                }
-                audioFile.once("finish", checkAndCloseAudio)
-                audioStream.pipe(audioFile, { end: true })
-                if (!data.audioOnly) {
-                    videoFile.once("finish", checkAndCloseVideo)
-                    videoStream.pipe(videoFile, { end: true })
-                }
-            } catch (err) {
-                onError(err)
-            }
-        })
-        if (downloading < config.concurent_dl) {
-            nextevent.emit(`startdl_${info.id}`)
-        } else {
-            dlqueue.push(info.id)
-        }
+        /* dlqueue.add(download_requested, data.audioOnly, {
+            audio_path: info.audio,
+            author_name: query.author.name,
+            from_pl: true,
+            output_path: info.output,
+            thumbnail_path: info.thumbnail,
+            thumbnail_url: query.bestThumbnail.url,
+            title: info.title,
+            track,
+            url: info.query.url,
+            video_path: info.video,
+            playlist_author: query.author.name,
+            playlist_title
+        }, ev.sender) */
+        queue.add(audio_only, {
+            audio_path: info.audio,
+            author_name: query.author.name,
+            from_pl: true,
+            output_path: info.output,
+            thumbnail_path: info.thumbnail,
+            thumbnail_url: query.bestThumbnail.url,
+            title: info.title,
+            track,
+            url: info.query.url,
+            video_path: info.video,
+            playlist_author: query.author.name,
+            playlist_title
+        }, ev.sender, 'dl', config, eapp.getPath('userData'))
     }
 })
 
-electron.ipcMain.handle("dlvid", async (ev, link: string, audioOnly = false, customRegExp: string[] = []) => {
-    if (ytdl.validateURL(link)) {
-        let query = (await ytdl.getInfo(link)).videoDetails
-        let thisId = id++
-        if (!query) {
-            return `Error getting video info for ${link}`
-        }
-        if (query.isLiveContent || query.age_restricted || query.isPrivate) {
-            ev.sender.send("error", "Video is currently unavalible (might be live)")
-            return "Video is currently unavalible (might be live)"
-        }
-        ev.sender.send("log", `Downloading ${query.title}`)
-        if (audioOnly) {
-            fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", "Mixed"), { recursive: true })
-            track = fs.existsSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 0;
-        } else {
-            fs.mkdirSync(path.resolve(config.output, "TV Shows", "Mixed", "Season 00"), { recursive: true })
-            track = fs.existsSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 1;
-        }
-        let thisTrack = `${++track}`
-        if (!thisTrack.startsWith("0")) {
-            thisTrack = `0${thisTrack}`
-        }
-        let title = query.title.replace(/\.$/, '')
-        try {
-            for (let regexp of customRegExp) {
-                let rex = new RegExp(regexp, "g")
-                title = title.replace(rex, '')
-            }
-        } catch (err) {
-            ev.sender.send("error", "Invalid Regular Expression")
-            ev.sender.send("error", err)
-            return
-        }
-        let info = {
-            id: thisId,
-            video: path.resolve(temp, `${thisId}_video.mp4`),
-            audio: path.resolve(temp, `${thisId}_audio.mp4`),
-            thumbnail: path.resolve(temp, `${thisId}_thumbnail.jpeg`),
-            output: path.join('${dir}', `\${replace_title} ${title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.${audioOnly ? "mp3" : "mp4"}`),
-            title,
-            track,
-            query
-        }
-        let onError = (err) => {
-            if (err) {
-                ev.sender.send("error", `Error Downloading: ${info.title}`)
-                return `Error Downloading: ${info.title}`
-            }
-        }
-        fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
-        if (!audioOnly) {
-            info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", "Mixed", "Season 00") + path.sep).replace("${replace_title} ", `S00e${thisTrack} -`)
-            fs.writeFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), JSON.stringify({ track }))
-        } else {
-            info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", "Mixed") + path.sep).replace("${replace_title} ", '' /* `${thisTrack} -` */)
-            fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), JSON.stringify({ track }))
-        }
-        if (fs.existsSync(info.output)) {
-            info.output = info.output.replace(".mp3", " (alternate).mp3").replace(".mp4", " (alternate).mp4")
-            info.title += " (alternate)"
-        } else {
-            fs.writeFileSync(info.output, "Checker File")
-        }
-        nextevent.once(`startdl_${info.id}`, async () => {
-            downloading++
-            let vidDone = false
-            let audioDone = false
-            let videoFile: fs.WriteStream
-            let videoStream: import("stream").Readable
-            await new Promise<void>(r => {
-                https.get(info.query.thumbnails[0].url, (res) => {
-                    let stream = fs.createWriteStream(path.resolve(info.thumbnail), { autoClose: true })
-                    res.pipe(stream)
-                    stream.on("finish", () => {
-                        r()
-                        stream.close()
-                    })
-                    res.on("error", () => {
-                        r()
-                    })
-                })
-            })
-            try {
-                if (!audioOnly) {
-                    videoFile = fs.createWriteStream(info.video, { autoClose: true })
-                    videoStream = ytdl(link, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestvideo" })
-                    videoStream.on("progress", (length, downloaded, total) => {
-                        console.log(downloaded, total)
-                        ev.sender.send('progress', info.title, 'dl', downloaded, total, 'video')
-                    })
-                }
-                let audioFile = fs.createWriteStream(info.audio, { autoClose: true })
-                let audioStream = ytdl(link, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: "highestaudio" })
-                audioStream.on("progress", (length, downloaded, total) => {
-                        console.log(downloaded, total)
-                    ev.sender.send('progress', info.title, 'dl', downloaded, total, 'audio')
-                })
-                let finsh = () => {
-                    nextevent.emit("donedl")
-                    downloading--
-                    processing++
-                    ev.sender.send("log", `Processing ${info.title}`)
-                    try {
-                        let date = dayjs()
-                        fs.appendFileSync(path.resolve(eapp.getPath("userData"), "ffmpeg.log"), `${info.title} started at ${date.format("DD/MM/YYYY HH:mm:ss")}\n`)
-                        let ffmpegLog = fs.createWriteStream(path.resolve(eapp.getPath("userData"), "ffmpeg", `${info.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.log`), { autoClose: true, flags: 'a+' })
-                        let ffmpeg: cp.ChildProcess
-                        if (audioOnly) {
-                            ffmpeg = cp.spawn(ffmpegPath, [
-                                '-stats',
-                                '-progress', 'pipe:3',
-                                '-i', info.audio,
-                                '-i', info.thumbnail,
-                                '-map', '0:a',
-                                '-c:a', 'mp3',
-                                '-map', '1:v',
-                                '-c:v:0', 'mjpeg',
-                                '-disposition:v:0', 'attached_pic',
-                                '-metadata', `title=${title}`,
-                                '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                '-metadata', `author=${info.query.author.name || "No Author"}`,
-                                '-metadata', `composer=${info.query.author.name || "No Composer"}`,
-                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
-                                '-metadata', `performer=${info.query.author.name || "No Performer"}`,
-                                '-metadata', `genre=YouTube Video`,
-                                '-metadata', `comment="${link}"`,
-                                '-metadata', `album_artist=Various Artists`,
-                                '-metadata', `track=${info.track}`,
-                                '-metadata', `disc=1`,
-                                '-metadata', `album=Mixed`,
-                                "-y",
-                                info.
-                                output
-                            ], {
-                                shell: false,
-                                stdio: ['inherit', 'pipe', 'pipe', 'pipe']
-                            })
-                        } else {
-                            ffmpeg = cp.spawn(ffmpegPath, [
-                                '-stats',
-                                '-progress', 'pipe:3',
-                                '-i', info.video,
-                                '-i', info.audio,
-                                '-i', info.thumbnail,
-                                '-map', '0:v',
-                                '-c:v:0', 'copy',
-                                '-map', '1:a',
-                                '-c:a:0', 'aac',
-                                '-map', '2:v',
-                                '-c:v:1', 'mjpeg',
-                                '-disposition:v:1', 'attached_pic',
-                                '-metadata', `title=${title}`,
-                                '-metadata', `artist=${info.query.author.name || "No Artist"}`,
-                                '-metadata', `author=${info.query.author.name || "No Author"}`,
-                                '-metadata', `composer=${info.query.author.name || "No Composer"}`,
-                                '-metadata', `publisher=${info.query.author.name || "No Publisher"}`,
-                                '-metadata', `performer=${info.query.author.name || "No Performer"}`,
-                                '-metadata', `album=Mixed`,
-                                '-metadata', `track=${info.track}`,
-                                '-metadata', `disc=1`,
-                                "-y",
-                                info.output
-                            ], {
-                                shell: false,
-                                stdio: ['inherit', 'pipe', 'pipe', 'pipe']
-                            })
-                        }
-                        ffmpeg.on("error", () => { ffmpegLog.write(onError) })
-                        ffmpeg.stderr.pipe(ffmpegLog, { end: true })
-                        ffmpeg.stderr.pipe(process.stderr, { end: true })
-                        ffmpeg.stdout.pipe(ffmpegLog, { end: true })
-                        ffmpeg.stdout.pipe(process.stdout, { end: true })
-                        let ffprogress = readline.createInterface(ffmpeg.stdio[3] as import('stream').Readable)
-                        let ffstderr = readline.createInterface(ffmpeg.stderr)
-                        let total = Infinity
-                        ffprogress.on('line', (data) => {
-                            if (data.startsWith('out_time_ms')) {
-                                let value = parseInt(data.replace("out_time_ms=", '')) / 1000
-                                if (isNaN(value) || value < 0) {
-                                    return;
-                                }
-                                ev.sender.send('progress', info.title, 'process', value, total)
-                            }
-                            if (data == "progress=end") {
-                                ev.sender.send('progress', info.title, 'process', 1, 1)
-                            }
-                        })
-                        ffstderr.on('line', (data) => {
-                            if (data.includes("duration")) {
-                                let cliped = data.trim().toLowerCase().replace(/duration: ?([0-9:.]+).*/i, '$1')
-                                let split = cliped.split(":")
-                                // In ms
-                                let new_total = (
-                                    (parseFloat(split[0]) * 60 * 60) +
-                                    (parseFloat(split[1]) * 60) + 
-                                    (parseFloat(split[2]))
-                                ) * 1000
-                                if (total < new_total) {
-                                    total = new_total
-                                }
-                            }
-                        })
-                        ffmpeg.on("exit", () => {
-                            ffmpegLog.close()
-                            ffprogress.close()
-                            ffstderr.close()
-                            if (!audioOnly) {
-                                fs.rmSync(info.video)
-                            }
-                            fs.rmSync(info.thumbnail)
-                            fs.rmSync(info.audio)
-                            ev.sender.send("log", `${info.title} Done`)
-                            nextevent.emit("doneproc")
-                            processing--
-                        })
-                    } catch {
-                        ev.sender.send("error", `Error Downloading: ${info.title}`)
-                        return `Error Downloading: ${info.title}`
-                    }
-                }
-                let checkAndCloseAudio = () => {
-                    if (vidDone || audioOnly) {
-                        nextevent.once(`startproc_${info.id}`, finsh)
-                        if (processing < config.concurent_process) {
-                            nextevent.emit(`startproc_${info.id}`)
-                        } else {
-                            procqueue.push(info.id)
-                        }
-                    } else if (!audioDone) {
-                        audioFile.close()
-                        audioDone = true;
-                    }
-                }
-                let checkAndCloseVideo = () => {
-                    if (audioDone) {
-                        nextevent.once(`startproc_${info.id}`, finsh)
-                        if (processing < config.concurent_process) {
-                            nextevent.emit(`startproc_${info.id}`)
-                        } else {
-                            procqueue.push(info.id)
-                        }
-                    } else if (!vidDone) {
-                        videoFile.close()
-                        vidDone = true;
-                    }
-                }
-                audioFile.on("finish", checkAndCloseAudio)
-                audioStream.pipe(audioFile, { end: true })
-                if (!audioOnly) {
-                    videoFile.on("finish", checkAndCloseVideo)
-                    videoStream.pipe(videoFile, { end: true })
-                }
-            } catch (err) {
-                onError(err)
-            }
-        })
-        if (downloading < config.concurent_dl) {
-            nextevent.emit(`startdl_${info.id}`)
-        } else {
-            dlqueue.push(info.id)
-        }
-    } else {
-        ev.sender.send("error", `${link} is not a valid video`)
-        return `${link} is not a valid video`
+electron.ipcMain.handle("dlvid", async (ev, link: string, audio_only = false, customRegExp: string[] = []) => {
+    let onError = (err: string | Error) => {
+        ev.sender.send("error", err)
+        return err
+    }
+    if (!ytdl.validateURL(link)) {
+        onError(`${link} is not a valid video`)
     }
 
+    let agent = ytdl.createAgent(config.cookies)
+    let query = (await ytdl.getInfo(link, {agent, lang: 'en'})).videoDetails
+    let thisId = id++
+    if (!query) {
+        return onError(`Error getting video info for ${link}`)
+    }
+    if (query.isLiveContent || query.age_restricted || query.isPrivate) {
+        onError(`Video is currently unavalible (might be live) [${link}]`)
+    }
+    ev.sender.send("log", `Downloading ${query.title}`)
+    if (audio_only) {
+        fs.mkdirSync(path.resolve(config.output, "Music", "Various Artists", "Mixed"), { recursive: true })
+        track = fs.existsSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 0;
+    } else {
+        fs.mkdirSync(path.resolve(config.output, "TV Shows", "Mixed", "Season 00"), { recursive: true })
+        track = fs.existsSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json")) ? JSON.parse(fs.readFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), { encoding: 'utf-8' })).track : 1;
+    }
+    let thisTrack = `${++track}`
+    if (!thisTrack.startsWith("0")) {
+        thisTrack = `0${thisTrack}`
+    }
+    let title = query.title.replace(/\.$/, '')
+    try {
+        for (let regexp of customRegExp) {
+            let rex = new RegExp(regexp, "g")
+            title = title.replace(rex, '')
+        }
+    } catch (err) {
+        ev.sender.send("error", "Invalid Regular Expression")
+        ev.sender.send("error", err)
+        return
+    }
+    let info = {
+        id: thisId,
+        video: path.resolve(temp, `${thisId}_video.mp4`),
+        audio: path.resolve(temp, `${thisId}_audio.mp4`),
+        thumbnail: path.resolve(temp, `${thisId}_thumbnail.jpeg`),
+        output: path.join('${dir}', `\${replace_title} ${title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}`),
+        title,
+        track,
+        query
+    }
+    fs.writeFileSync(path.resolve(temp, "id.json"), JSON.stringify({ id }))
+    if (!audio_only) {
+        info.output = info.output.replace('${dir}', path.resolve(config.output, "TV Shows", "Mixed", "Season 00") + path.sep).replace("${replace_title} ", `S00e${thisTrack} -`)
+        fs.writeFileSync(path.resolve(config.output, "TV Shows", "Mixed", "track.json"), JSON.stringify({ track }))
+    } else {
+        info.output = info.output.replace('${dir}', path.resolve(config.output, "Music", "Various Artists", "Mixed") + path.sep).replace("${replace_title} ", '')
+        fs.writeFileSync(path.resolve(config.output, "Music", "Various Artists", "Mixed", "track.json"), JSON.stringify({ track }))
+    }
+    let alt_num = 0
+    while (fs.existsSync(info.output + (alt_num > 0 ? `(alternate ${alt_num}).` : '.') + (audio_only ? config.audio_format : config.video_format))) {
+        ++alt_num;
+    }
+    info.output = info.output + (alt_num > 0 ? `(alternate ${alt_num}).` : '.') + (audio_only ? config.audio_format : config.video_format)
+    if (alt_num > 0) {
+        info.title = `${info.title} (alternate ${alt_num})`
+    }
+    fs.writeFileSync(info.output, "Checker File")
+
+    /* dlqueue.add(download_requested, audio_only, {
+        audio_path: info.audio,
+        author_name: query.author.name,
+        from_pl: false,
+        output_path: info.output,
+        thumbnail_path: info.thumbnail,
+        thumbnail_url: query.thumbnail.thumbnails.sort((a, b) => b.width - a.width || b.height - a.height)[0].url,
+        title: info.title,
+        track,
+        url: link,
+        video_path: info.video
+    }, ev.sender) */
+    queue.add(audio_only, {
+        audio_path: info.audio,
+        author_name: query.author.name,
+        from_pl: false,
+        output_path: info.output,
+        thumbnail_path: info.thumbnail,
+        thumbnail_url: query.thumbnail.thumbnails.sort((a, b) => b.width - a.width || b.height - a.height)[0].url,
+        title: info.title,
+        track,
+        url: link,
+        video_path: info.video
+    }, ev.sender, 'dl', config, eapp.getPath('userData'))
 })
 
 electron.ipcMain.handle("valid", async (ev, link: string) => {
@@ -742,37 +657,48 @@ electron.ipcMain.handle("choose_output", () => {
     let folder = electron.dialog.showOpenDialogSync({ properties: [ "createDirectory", "showHiddenFiles", "openDirectory" ], defaultPath: config.output, title: "Select An Output Folder" })
     config.output = folder != null ? folder[ 0 ] : config.output
     fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, (_key, val) => (val == Infinity ? "infinity" : val), 4))
+    return config.output
 })
 
 electron.ipcMain.handle("set_concurrency", (ev, dl: number | "infinity" = 5, proc: number | "infinity" = 5) => {
     //@ts-ignore
     if (dl.toString().toLowerCase() == "infinity") {
-        config.concurent_dl = Infinity
+        config.concurrent_dl = Infinity
     } else if (typeof dl == "number") {
         //@ts-ignore
-        config.concurent_dl = parseInt(dl)
+        config.concurrent_dl = parseInt(dl)
     } else if (isNaN(parseInt(dl))) {
-        config.concurent_dl = 5
+        config.concurrent_dl = 5
     } else {
-        config.concurent_dl = parseInt(dl)
+        config.concurrent_dl = parseInt(dl)
     }
 
     if (proc.toString().toLowerCase() == "infinity") {
-        config.concurent_process = Infinity
+        config.concurrent_process = Infinity
     } else if (typeof proc == "number") {
         //@ts-ignore
-        config.concurent_process = parseInt(proc)
+        config.concurrent_process = parseInt(proc)
     } else if (isNaN(parseInt(proc))) {
-        config.concurent_process = 5
+        config.concurrent_process = 5
     } else {
-        config.concurent_process = parseInt(proc)
+        config.concurrent_process = parseInt(proc)
     }
 
     //@ts-ignore
 
     fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, (_key, val) => (val == Infinity ? "infinity" : val), 4))
-    nextevent.setMaxListeners(config.concurent_process + config.concurent_dl + 7)
+    queue.max_count = config.concurrent_dl
+    // dlqueue.max_count = config.concurent_process
     return "Values Set\n"
+})
+
+electron.ipcMain.handle('set_config', (ev, new_config: program_config) => {
+    config = new_config
+    fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, null, 4))
+})
+
+electron.ipcMain.handle('config', ev => {
+    return config
 })
 
 electron.ipcMain.handle("theme", (ev, theme?: "light" | "dark") => {
@@ -788,6 +714,8 @@ let close = () => {
     eapp.quit()
     process.exit()
 }
+
+console.log(process.versions)
 
 let createWin = (url: string, preloadFile = "", showOnCreate = true) => {
     let win = new electron.BrowserWindow({
@@ -914,14 +842,14 @@ eapp.on("window-all-closed", close)
 eapp.whenReady().then(() => {
     console.log("Started!")
     if (fs.existsSync(path.resolve(eapp.getPath("userData"), "config.json"))) {
-        config = {...config, ...JSON.parse(fs.readFileSync(path.resolve(eapp.getPath("userData"), "config.json"), { encoding: 'utf-8' }), (_key, val) => (val == "infinity" ? Infinity : val))}
-    } else {
-        fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, null, 4))
+        config = {...base_config, ...config, ...JSON.parse(fs.readFileSync(path.resolve(eapp.getPath("userData"), "config.json"), { encoding: 'utf-8' }), (_key, val) => (val == "infinity" ? Infinity : val))}
     }
+    fs.writeFileSync(path.resolve(eapp.getPath("userData"), "config.json"), JSON.stringify(config, null, 4))
+    queue.max_count = config.concurrent_dl
+    // procqueue.max_count = config.concurent_process
     port = startServer()
     mainWin = createWin(`http://localhost:${port}`, path.resolve(__dirname, "preloads", "index.js"))
     autoUpdater.checkForUpdates()
-    nextevent.setMaxListeners(config.concurent_process + config.concurent_dl + 7)
     let value = 0
     let type = false
     // setInterval(() => {

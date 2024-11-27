@@ -70,17 +70,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@distube/ytdl-core@npm:latest":
-  version: 4.14.4
-  resolution: "@distube/ytdl-core@npm:4.14.4"
+"@distube/ytdl-core@npm:^4.15.1":
+  version: 4.15.1
+  resolution: "@distube/ytdl-core@npm:4.15.1"
   dependencies:
-    http-cookie-agent: "npm:^6.0.5"
+    http-cookie-agent: "npm:^6.0.6"
     m3u8stream: "npm:^0.8.6"
     miniget: "npm:^4.2.3"
     sax: "npm:^1.4.1"
     tough-cookie: "npm:^4.1.4"
     undici: "npm:five"
-  checksum: 10/5b6583a90a93efa4524f48fe147edbf7390c1ffe92bb1522f69ecd4a07077fcfc7bd7dd8b0b4042c4142bcabb5400146ab85f804252ea52b34aa85da39d0beb6
+  checksum: 10/e62bb518cd696ad0b72bb8f5ddfbccfd2b8e1f4883368a45b98f55cdc3e01b5d690d1cf1f6721f445f9fb29929c57c638f1bce923dd867ad09ea4fa42dd2798f
   languageName: node
   linkType: hard
 
@@ -804,7 +804,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:latest":
+"@types/node@npm:*":
   version: 22.7.6
   resolution: "@types/node@npm:22.7.6"
   dependencies:
@@ -826,6 +826,15 @@ __metadata:
   dependencies:
     undici-types: "npm:~6.19.2"
   checksum: 10/689badb5af2a1a03553a6d21880fa4aabb8cf028b7db1a03be889c0026047a780ac37c83df5dca036f02f5dc3cc4000254fa40d2cadd5df0e9bd6f43dae6eac6
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^22.9.3":
+  version: 22.9.3
+  resolution: "@types/node@npm:22.9.3"
+  dependencies:
+    undici-types: "npm:~6.19.8"
+  checksum: 10/c32a03ff998b8c6cf7d653216508a92b1e6569dd5031ea6cfc2aaa8c75ebbf4172bf1602f0e1f673086e210787dc96667b99ba4d919bc151f9a1f88aeac42822
   languageName: node
   linkType: hard
 
@@ -3739,7 +3748,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"http-cookie-agent@npm:^6.0.5":
+"http-cookie-agent@npm:^6.0.6":
   version: 6.0.6
   resolution: "http-cookie-agent@npm:6.0.6"
   dependencies:
@@ -6453,7 +6462,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~6.19.2":
+"undici-types@npm:~6.19.2, undici-types@npm:~6.19.8":
   version: 6.19.8
   resolution: "undici-types@npm:6.19.8"
   checksum: 10/cf0b48ed4fc99baf56584afa91aaffa5010c268b8842f62e02f752df209e3dea138b372a60a963b3b2576ed932f32329ce7ddb9cb5f27a6c83040d8cd74b7a70
@@ -6891,12 +6900,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "youtube_download@workspace:."
   dependencies:
-    "@distube/ytdl-core": "npm:latest"
+    "@distube/ytdl-core": "npm:^4.15.1"
     "@distube/ytpl": "patch:@distube/ytpl@npm%3A1.2.1#~/.yarn/patches/@distube-ytpl-npm-1.2.1-9b3ebcfa7b.patch"
     "@pmmmwh/react-refresh-webpack-plugin": "npm:^0.5.11"
     "@types/bootstrap": "npm:^5.2.8"
     "@types/express": "npm:^4.17.13"
-    "@types/node": "npm:latest"
+    "@types/node": "npm:^22.9.3"
     "@types/react": "npm:^18.2.31"
     "@types/react-dom": "npm:^18.2.14"
     "@types/webpack-env": "npm:^1.18.3"

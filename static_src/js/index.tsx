@@ -3,7 +3,9 @@ import utils from  "./utils"
 import Video from "./components/video"
 import moon_stars from "../bootstrap-icons-1.11.1/moon-stars.svg"
 import sun_fill from "../bootstrap-icons-1.11.1/sun-fill.svg"
+import close from "../bootstrap-icons-1.11.1/x-circle.svg"
 import VideoProgress from "./components/video_progress"
+import {Modal} from 'bootstrap'
 
 let valid = false
 let isPL = false
@@ -18,6 +20,7 @@ let progress_list: {[key: string]: {
     proc_max: number
     proc_cur: number,
 }} = {}
+
 // TODO: Collapsable progress bars
 //TODO: Modify most refs to states
 const page = () => {
@@ -25,41 +28,66 @@ const page = () => {
     //@ts-ignore
     let [current_list, set_list] = react.useState<{ items: { title: string, query: import("ytpl").Item }[], title: string, url: string }>({})
     let [video_list, set_videos] = react.useState<typeof current_list["items"]>([])
-    let [audioOnly, set_ao] = react.useState(false)
+    let [audio_only, set_audio_only] = react.useState(false)
+    let [reverse_pl, set_reverse_pl] = react.useState(false)
     let [refresh, set_refresh] = react.useState(0)
-    let url = react.useRef<HTMLInputElement>(null)
-    let audio = react.useRef<HTMLInputElement>(null)
-    let reverse = react.useRef<HTMLInputElement>(null)
+    let [url, set_url] = react.useState('')
+    let [temp_config, set_temp_config] = react.useState<program_config | undefined>()
+    let [config, set_config] = react.useState<program_config | undefined>()
+    let [cookies_valid, set_cookies_valid] = react.useState(true)
+    let [regex, set_regex] = react.useState('')
+    let [regex_test, set_regex_test] = react.useState('')
+    let [config_modal, set_config_modal] = react.useState<Modal>()
+    // let url = react.useRef<HTMLInputElement>(null)
+    // let audio = react.useRef<HTMLInputElement>(null)
+    let reverse = react.useRef<HTMLButtonElement>(null)
     let submit = react.useRef<HTMLInputElement>(null)
     let dl = react.useRef<HTMLInputElement>(null)
     let proc = react.useRef<HTMLInputElement>(null)
     let logs = react.useRef<HTMLTextAreaElement>(null)
     let err = react.useRef<HTMLTextAreaElement>(null)
-    let regex = react.useRef<HTMLInputElement>(null)
-    let regex_tester = react.useRef<HTMLInputElement>(null)
-    let regex_result = react.useRef<HTMLInputElement>(null)
-    let regex_flags = react.useRef<HTMLSelectElement>(null)
+    // let regex_tester = react.useRef<HTMLInputElement>(null)
+    // let regex_result = react.useRef<HTMLInputElement>(null)
+    // let regex_flags = react.useRef<HTMLSelectElement>(null)
     let update_bar = react.useRef<HTMLProgressElement>(null)
     let check = react.useRef<HTMLTextAreaElement>(null)
     let color_mode = react.useRef<HTMLImageElement>(null)
-
+    let config_modal_ref = react.useRef<HTMLDivElement>(null)
+    let output = react.useRef<HTMLInputElement>(null)
+    // let regex = react.useRef<HTMLInputElement>(null)
+    // let audio_format = react.useRef<HTMLInputElement>(null)
+    // let video_format = react.useRef<HTMLInputElement>(null)
+    // let cookies = react.useRef<HTMLTextAreaElement>(null)
     // let cbs: {[key: string]: Parameters<Required<import('./components/video_progress').props>['cbs']>[0]} = {}
     
+    if (!config_modal && config_modal_ref.current) {
+        set_config_modal(new Modal(config_modal_ref.current!, {
+
+        }))
+    }
+
     let sendReq = () => {
+        let regex_list = regex.replace(/\/([^/]+)\/([a-z])?,?/g, '$1\\,$2').split(' ')
         if (valid && isPL) {
             // let regex = regexp.value.split(",")
-            window.api.plRequest(url.current!.value, reverse.current!.checked, regex.current!.value.split(/, ?/).filter(s => s.match(/^\/[^/]+\/$/)))
+            window.api.plRequest(url, reverse_pl, regex_list)
         } else if (valid) {
-            window.api.downloadVid(url.current!.value, audio.current!.checked, regex.current!.value.split(/, ?/).filter(s => s.match(/^\/[^/]+\/$/)))
+            window.api.downloadVid(url, audio_only, regex_list)
         } else {
             alert("Not a valid yt link")
         }
     }
 
-    let onInput = async () => {
+    let onInput = async (e: react.FormEvent<HTMLInputElement>) => {
+        let url = e.currentTarget.value
+        set_url(e.currentTarget.value)
+        if (!url) {
+            check.current!.style.backgroundColor = ''
+            return
+        }
         try {
-            new URL(url.current!.value)
-            let _valid = await window.api.valid(url.current!.value)
+            new URL(url)
+            let _valid = await window.api.valid(url)
             check.current!.style.backgroundColor = "green"
             if (!_valid) {
                 check.current!.style.backgroundColor = "yellow"
@@ -81,27 +109,35 @@ const page = () => {
         }
     }
 
-    let onRegexTest = () => {
-        let expressions = regex.current!.value.split(/[gi]?, ?/).filter(s => s.match(/^\/[^/]+\/$/))
-        let value = regex_tester.current!.value
+    let regexTest = () => {
+        // let expressions = regex.current!.value.split(/[gi]?, ?/).filter(s => s.match(/^\/[^/]+\/$/))
+        let expressions = regex.replace(/\/([^/]+)\/([a-z])?,?/g, '$1\\,$2').split(' ')
+        let value = regex_test
         for (let expression of expressions) {
+            let e = expression.split('\\,')
             try {
-                value = value.replace(new RegExp(expression.replace(/^\//, '').replace(/\/$/, ''), regex_flags.current!.value), '')
+                value = value.replace(new RegExp(e[0], e[1]), '')
+                // value = value.replace(new RegExp(expression.replace(/^\//, '').replace(/\/$/, ''), regex_flags.current!.value), '')
             } catch (err) { /* console.error(err) */ }
         }
-        regex_result.current!.value = value
+        return value
     }
 
     let onPlDlClick = () => {
-        window.api.downloadPl(video_list, audioOnly, current_list.title)
+        window.api.downloadPl(video_list, audio_only, current_list.title)
         set_tab(0)
         //@ts-ignore
         set_list({})
         set_videos([])
-        set_ao(false)
+        // set_audio_only(false)
     }
 
     react.useEffect(() => {
+        (async() => {
+            let c = await window.api.getConfig();
+            set_temp_config(c)
+            set_config(c)
+        })()
         window.api.setLogListener((data) => {
             // alert(data)
             logs_list.push(data)
@@ -134,15 +170,14 @@ const page = () => {
             set_list(data)
             set_tab(1)
             set_videos([...data.items])
-            set_ao(audio.current!.checked)
+            // set_ao(audio.current!.checked)
         })
 
         window.api.theme().then(theme => {
             color_mode.current!.src = theme == "dark" ? moon_stars : sun_fill
             color_mode.current!.style.filter = theme == "dark" ? 'invert(100%)' : ''
         })
-
-
+        
         submit.current!.disabled = true
 
     }, [])
@@ -159,6 +194,7 @@ const page = () => {
             if (type == 'process') {
                 if (value == max) {
                     delete progress_list[title]
+                    return
                 }
                 progress_list[title].proc_cur = value
                 progress_list[title].proc_max = max
@@ -172,7 +208,9 @@ const page = () => {
             progress_list[title].dl_v_cur = value
             progress_list[title].dl_v_max = max
         })
-        return () => window.api.setProgressListener(() => null)
+        return () => {
+            window.api.setProgressListener(() => null)
+        }
     }, [refresh])
 
     let main: JSX.Element = <></>
@@ -181,7 +219,16 @@ const page = () => {
         case 0: {
             main = <>
                 <div className="col">
-                    <div className="url_div">
+                        <div className="input-group">
+                            <span className="input-group-text">Enter Link Here</span>
+                            <input title='url' type="url" autoFocus required className="form-control" onInput={onInput} onKeyDown={e => {
+                                if (e.key == "Enter" || e.code == "Enter") {
+                                    sendReq()
+                                }
+                            }} />
+                            <textarea title="status" ref={check} readOnly cols={1} rows={1} style={{ pointerEvents: "none", margin: 0 }} />
+                        </div>
+                    {/* <div className="url_div">
                         <p>Enter Link Here:</p>
                         <div className="row center_items">
                             <input type="url" ref={url} autoFocus required title="url" onInput={onInput} onKeyDown={e => {
@@ -191,9 +238,15 @@ const page = () => {
                             }} />
                             <textarea title="status" ref={check} readOnly cols={1} rows={1} style={{pointerEvents: "none"}}/>
                         </div>
+                    </div> */}
+                    <div className="input-group btn-group">
+                        <span className="input-group-text">Audio Only</span>
+                        <button /* type="checkbox" */ className={`form-control btn btn-${audio_only ? 'success' : 'danger'}`} onClick={() => set_audio_only(!audio_only)}>{audio_only ? 'Enabled' : 'Disabled'}</button>
+                        <span className="input-group-text">Reverse</span>
+                        <button ref={reverse} /* type="checkbox" */ className={`form-control btn btn-${reverse_pl ? 'success' : 'danger'}`} onClick={() => set_reverse_pl(!reverse_pl)} disabled>{reverse_pl ? 'Enabled' : 'Disabled'}</button>
                     </div>
-                    <div className="options">
-                        <div className="row center_items" style={{ marginBottom: 0 }}>
+                    {/* <div className="options">
+                         <div className="row center_items" style={{ marginBottom: 0 }}>
                             <label htmlFor="audio">Audio Only: </label>
                             <input type="checkbox" id="audio" ref={audio} />
                         </div>
@@ -201,8 +254,19 @@ const page = () => {
                             <label htmlFor="reverse">Reverse Playlist: </label>
                             <input type="checkbox" id="reverse" ref={reverse} disabled />
                         </div>
+                    </div> */}
+                    <div className="input-group">
+                        <span className="input-group-text"><a className="link-info" href="https://www.regular-expressions.info/tutorial.html">Custom RegExp</a></span>
+                        <input className="form-control" type="text" id="custom_regexp" title="_test" onInput={v => set_regex(v.currentTarget.value)} />
+                        {/* <select className="form-select" id="regexp_flags" ref={regex_flags} title="flags" style={{width: 'unset', flex: 'unset'}} onChange={onRegexTest}>
+                            <option value=""></option>
+                            <option value="g">g</option>
+                            <option value="i">i</option>
+                            <option value="y">y</option>
+                            <option value="u">u</option>
+                        </select> */}
                     </div>
-                    <div className="row center_items" style={{justifyContent: "space-around"}}>
+                    {/* <div className="row center_items" style={{justifyContent: "space-around"}}>
                         <label htmlFor="custon_regexp">
                             <a className="link-info" href="https://www.regular-expressions.info/tutorial.html">Custom RegExp</a>
                         </label>
@@ -216,12 +280,17 @@ const page = () => {
                                 <option value="u">u</option>
                             </select>
                         </div>
+                    </div> */}
+                    <div className="input-group">
+                        <span className="input-group-text">Test Regex</span>
+                        <input className="form-control" type="text" title="regexp_test" onInput={e => set_regex_test(e.currentTarget.value)} />
+                        <input className="form-control" type="text" title="regexp_result" value={regexTest()} readOnly style={{ pointerEvents: "none" }} />
                     </div>
-                    <div className="row center_items">
+                    {/* <div className="row center_items">
                         <label htmlFor="regexp_test"><pre>Test </pre></label>
                         <input type="text" title="regexp_test" ref={regex_tester} onInput={onRegexTest} />
                         <input type="text" title="regexp_result" ref={regex_result} readOnly style={{ pointerEvents: "none" }} />
-                    </div>
+                    </div> */}
                     <div>
                         <input type="button" ref={submit} value="submit" size={50} onClick={sendReq} />
                     </div>
@@ -259,9 +328,82 @@ const page = () => {
     }
 
     return <>
+        <div ref={config_modal_ref} data-bs-backdrop="static" className="modal fade" tabIndex={-1} aria-labelledby="configModalLabel" aria-hidden="true">
+            <div className="modal-dialog">
+                <div className="modal-content">
+                    <div className="modal-header">
+                        <h1 className="modal-title" id="configModalLabel">Settings</h1>
+                    </div>
+                    <div className="modal-body" style={{overflow: 'auto'}}>
+                        <div className="input-group btn-group">
+                            <span className="input-group-text">Output</span>
+                            <input ref={output} type="text" className="form-control" defaultValue={temp_config?.output} />
+                            <button className="form-control btn btn-secondary" onClick={async (e) => set_temp_config({...temp_config!, output: output.current!.value = await window.api.selectOutput()})}>Browse</button>
+                        </div>
+                        <div className="input-group">
+                            <span className="input-group-text">Audio File Type</span>
+                            <select className="form-select" value={temp_config?.audio_format} onChange={e => set_temp_config({...temp_config!, audio_format: e.currentTarget.value as program_config['audio_format']})}>
+                                <option value="flac">flac</option>
+                                <option value="mp3">mp3</option>
+                                <option value="aac">aac</option>
+                                <option value="opus">opus</option>
+                                <option value="pcm_f32le">pcm_f32le</option>
+                                <option value="pcm_f16le">pcm_f16le</option>
+                            </select>
+                        </div>
+                        <div className="input-group">
+                            <span className="input-group-text">Video File Type</span>
+                            <select className="form-select" value={temp_config?.video_format} onChange={e => set_temp_config({ ...temp_config!, video_format: e.currentTarget.value as program_config['video_format'] })}>
+                                <option value="av1">av1</option>
+                                <option value="mp4">mp4</option>
+                                <option value="webp">webp</option>
+                                <option value="mkv">mkv</option>
+                                <option value="flv">flv</option>
+                            </select>
+                        </div>
+                        <div style={{display: 'flex', flexDirection: "column"}}>
+                            <p>Cookies</p>
+                            <p> (Will allow you to download your private video and age restricted)</p>
+                            <textarea defaultValue={JSON.stringify(temp_config?.cookies, null, 4)} onChange={e => {
+                                try {
+                                    let cookies = JSON.parse(e.currentTarget.value)
+                                    if (!Array.isArray(cookies)) {
+                                        throw ""
+                                    }
+                                    if (!cookies.every(v => 
+                                        typeof v.name == 'string' &&
+                                        typeof v.value == 'string' &&
+                                        typeof v.expirationDate == 'number' &&
+                                        typeof v.domain == 'string' &&
+                                        typeof v.path == 'string' &&
+                                        typeof v.secure == "boolean" &&
+                                        typeof v.httpOnly == 'boolean' &&
+                                        typeof v.hostOnly == 'boolean' &&
+                                        typeof v.sameSite == 'string'
+                                    )) {
+                                        throw ""
+                                    }
+                                    set_temp_config({ ...temp_config!, cookies})
+                                    set_cookies_valid(true)
+                                } catch {
+                                    set_cookies_valid(false)
+                                }
+                            }} wrap="off" style={{flexGrow: 1, height: '150px', textAlign: 'left'}}></textarea>
+                        </div>
+                    </div>
+                    <div className="modal-footer">
+                        <button type="button" className="btn btn-secondary" data-bs-dismiss="modal" onClick={() => { set_temp_config({ ...config! }); config_modal!.hide();}}>Cancel</button>
+                        <button type="button" className="btn btn-primary" disabled={!cookies_valid} onClick={() => { set_config({ ...temp_config! }); window.api.setConfig(temp_config!); config_modal!.hide(); }}>Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <header>
             <div>
-                <input type="button" value="Select Output Location" onClick={window.api.selectOutput} />
+                {/* <input type="button" value="Select Output Location" onClick={window.api.selectOutput} /> */}
+                <input type="button" value="Open Settings" onClick={() => {
+                    config_modal?.show()
+                }} />
                 <img title="theme select" ref={color_mode} style={{marginLeft: "10px", cursor: "pointer", verticalAlign: 'middle'}} onClick={async _e => {
                     let theme = (await utils.loadTheme()) == "dark" ? "light" : "dark"
                     utils.setTheme(theme)
@@ -314,5 +456,5 @@ const page = () => {
         </div>
     </>
 }
-                
+
 export default page

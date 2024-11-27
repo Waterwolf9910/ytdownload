@@ -68,6 +68,10 @@ let config = {
                 type: 'asset/resource'
             },
             {
+                test: /\.(woff|woff2|ttf|otf)$/i,
+                type: 'asset/resource',
+            },
+            {
                 test: /\.svg$/i,
                 dependency: { not: [ 'url' ] },
                 type: 'asset/inline'

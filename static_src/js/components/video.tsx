@@ -16,7 +16,7 @@ export default ({ data, clickDelete }: props) => {
                 if (!entry.isIntersecting) {
                     return;
                 }
-                img.current!.src = data.bestThumbnail.url || data.thumbnails[0].url!
+                img.current!.src = data.bestThumbnail.url || data.thumbnails.sort((a, b) => b.width - a.width || b.height - a.height)[0].url!
                 observer.disconnect()
                 //@ts-ignore
                 observer = null;

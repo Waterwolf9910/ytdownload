@@ -1,6 +1,6 @@
 {
     "name": "youtube_download",
-    "version": "2.0.2",
+    "version": "3.0.0",
     "homepage": "https://waterwolfies.com",
     "license": "MIT",
     "private": true,
@@ -13,7 +13,7 @@
     },
     "packageManager": "yarn@4.5.0",
     "dependencies": {
-        "@distube/ytdl-core": "latest",
+        "@distube/ytdl-core": "^4.15.1",
         "@distube/ytpl": "patch:@distube/ytpl@npm%3A1.2.1#~/.yarn/patches/@distube-ytpl-npm-1.2.1-9b3ebcfa7b.patch",
         "bootstrap": "^5.3.2",
         "dayjs": "^1.11.0",
@@ -35,7 +35,7 @@
         "@pmmmwh/react-refresh-webpack-plugin": "^0.5.11",
         "@types/bootstrap": "^5.2.8",
         "@types/express": "^4.17.13",
-        "@types/node": "latest",
+        "@types/node": "^22.9.3",
         "@types/react": "^18.2.31",
         "@types/react-dom": "^18.2.14",
         "@types/webpack-env": "^1.18.3",

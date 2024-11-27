@@ -51,7 +51,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "@distube/ytdl-core",\
-      "npm:4.14.4"\
+      "npm:4.15.1"\
     ],\
     [\
       "@distube/ytpl",\
@@ -327,7 +327,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "@types/node",\
-      "npm:22.7.6"\
+      "npm:22.9.3"\
     ],\
     [\
       "@types/plist",\
@@ -1379,7 +1379,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "http-cookie-agent",\
-      "virtual:80f258398ac06cc99c49c8186a9146d5c4ef13eefa774de630114f562a2efb0a5b5f377ecb425e440aaeb2c8e6a68ffac5ef8c9a0fb4bc8e018c095b8e1db953#npm:6.0.6"\
+      "virtual:91b8606167198087c644caf1b9b5ba640f7a78132f903640230247fdb10d333ba209271c96816292c7d976c90ec6069974f6717b91cab8bc13a5399318d41e5a#npm:6.0.6"\
     ],\
     [\
       "http-errors",\
@@ -2584,12 +2584,12 @@ const RAW_RUNTIME_STATE =
       [null, {\
         "packageLocation": "./",\
         "packageDependencies": [\
-          ["@distube/ytdl-core", "npm:4.14.4"],\
+          ["@distube/ytdl-core", "npm:4.15.1"],\
           ["@distube/ytpl", "patch:@distube/ytpl@npm%3A1.2.1#~/.yarn/patches/@distube-ytpl-npm-1.2.1-9b3ebcfa7b.patch::version=1.2.1&hash=167175"],\
           ["@pmmmwh/react-refresh-webpack-plugin", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:0.5.15"],\
           ["@types/bootstrap", "npm:5.2.10"],\
           ["@types/express", "npm:4.17.21"],\
-          ["@types/node", "npm:22.7.6"],\
+          ["@types/node", "npm:22.9.3"],\
           ["@types/react", "npm:18.3.11"],\
           ["@types/react-dom", "npm:18.3.1"],\
           ["@types/webpack-env", "npm:1.18.5"],\
@@ -2707,11 +2707,11 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["@distube/ytdl-core", [\
-      ["npm:4.14.4", {\
-        "packageLocation": "./.yarn/cache/@distube-ytdl-core-npm-4.14.4-80f258398a-5b6583a90a.zip/node_modules/@distube/ytdl-core/",\
+      ["npm:4.15.1", {\
+        "packageLocation": "./.yarn/cache/@distube-ytdl-core-npm-4.15.1-91b8606167-e62bb518cd.zip/node_modules/@distube/ytdl-core/",\
         "packageDependencies": [\
-          ["@distube/ytdl-core", "npm:4.14.4"],\
-          ["http-cookie-agent", "virtual:80f258398ac06cc99c49c8186a9146d5c4ef13eefa774de630114f562a2efb0a5b5f377ecb425e440aaeb2c8e6a68ffac5ef8c9a0fb4bc8e018c095b8e1db953#npm:6.0.6"],\
+          ["@distube/ytdl-core", "npm:4.15.1"],\
+          ["http-cookie-agent", "virtual:91b8606167198087c644caf1b9b5ba640f7a78132f903640230247fdb10d333ba209271c96816292c7d976c90ec6069974f6717b91cab8bc13a5399318d41e5a#npm:6.0.6"],\
           ["m3u8stream", "npm:0.8.6"],\
           ["miniget", "npm:4.2.3"],\
           ["sax", "npm:1.4.1"],\
@@ -3553,6 +3553,14 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.yarn/cache/@types-node-npm-22.7.6-cbb64e0ad4-46a8d6bcd6.zip/node_modules/@types/node/",\
         "packageDependencies": [\
           ["@types/node", "npm:22.7.6"],\
+          ["undici-types", "npm:6.19.8"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:22.9.3", {\
+        "packageLocation": "./.yarn/cache/@types-node-npm-22.9.3-bc9b3f960a-c32a03ff99.zip/node_modules/@types/node/",\
+        "packageDependencies": [\
+          ["@types/node", "npm:22.9.3"],\
           ["undici-types", "npm:6.19.8"]\
         ],\
         "linkType": "HARD"\
@@ -7115,10 +7123,10 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:80f258398ac06cc99c49c8186a9146d5c4ef13eefa774de630114f562a2efb0a5b5f377ecb425e440aaeb2c8e6a68ffac5ef8c9a0fb4bc8e018c095b8e1db953#npm:6.0.6", {\
-        "packageLocation": "./.yarn/__virtual__/http-cookie-agent-virtual-7cf5151dfe/0/cache/http-cookie-agent-npm-6.0.6-cd04fa6686-fc38b26774.zip/node_modules/http-cookie-agent/",\
+      ["virtual:91b8606167198087c644caf1b9b5ba640f7a78132f903640230247fdb10d333ba209271c96816292c7d976c90ec6069974f6717b91cab8bc13a5399318d41e5a#npm:6.0.6", {\
+        "packageLocation": "./.yarn/__virtual__/http-cookie-agent-virtual-cced8109ef/0/cache/http-cookie-agent-npm-6.0.6-cd04fa6686-fc38b26774.zip/node_modules/http-cookie-agent/",\
         "packageDependencies": [\
-          ["http-cookie-agent", "virtual:80f258398ac06cc99c49c8186a9146d5c4ef13eefa774de630114f562a2efb0a5b5f377ecb425e440aaeb2c8e6a68ffac5ef8c9a0fb4bc8e018c095b8e1db953#npm:6.0.6"],\
+          ["http-cookie-agent", "virtual:91b8606167198087c644caf1b9b5ba640f7a78132f903640230247fdb10d333ba209271c96816292c7d976c90ec6069974f6717b91cab8bc13a5399318d41e5a#npm:6.0.6"],\
           ["@types/tough-cookie", null],\
           ["@types/undici", null],\
           ["agent-base", "npm:7.1.1"],\
@@ -10808,12 +10816,12 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./",\
         "packageDependencies": [\
           ["youtube_download", "workspace:."],\
-          ["@distube/ytdl-core", "npm:4.14.4"],\
+          ["@distube/ytdl-core", "npm:4.15.1"],\
           ["@distube/ytpl", "patch:@distube/ytpl@npm%3A1.2.1#~/.yarn/patches/@distube-ytpl-npm-1.2.1-9b3ebcfa7b.patch::version=1.2.1&hash=167175"],\
           ["@pmmmwh/react-refresh-webpack-plugin", "virtual:8e16a101b9c083be7ece5c6507a23d30a218b4d0b80d6b206b38db8f036731d4010827043633e2942ccabfac37022c5c803657435873fb6f43a416b1cdc46edf#npm:0.5.15"],\
           ["@types/bootstrap", "npm:5.2.10"],\
           ["@types/express", "npm:4.17.21"],\
-          ["@types/node", "npm:22.7.6"],\
+          ["@types/node", "npm:22.9.3"],\
           ["@types/react", "npm:18.3.11"],\
           ["@types/react-dom", "npm:18.3.1"],\
           ["@types/webpack-env", "npm:1.18.5"],\

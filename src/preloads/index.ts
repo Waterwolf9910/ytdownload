@@ -46,16 +46,16 @@ let setProgressListener = (listenerFunc) => {
 }
 
 let plRequest = (param1, param2, param3) => {
-    electron.ipcRenderer.invoke("getpl", param1, param2, param3)
+    return electron.ipcRenderer.invoke("getpl", param1, param2, param3)
 }
 
 let downloadVid = (param1, param2, param3, param4) => {
-    electron.ipcRenderer.invoke("dlvid", param1, param2, param3, param4)
+    return electron.ipcRenderer.invoke("dlvid", param1, param2, param3, param4)
 }
 
 
 let selectOutput = () => {
-    electron.ipcRenderer.invoke("choose_output")
+    return electron.ipcRenderer.invoke("choose_output")
 }
 
 let valid = (param1) => {
@@ -66,7 +66,15 @@ let theme = (theme = null) => {
     return electron.ipcRenderer.invoke("theme", theme)
 }
 let downloadPl = (param1, param2, param3) => {
-    electron.ipcRenderer.invoke("dlpl", { info: param1, audioOnly: param2, title: param3 })
+    electron.ipcRenderer.invoke("dlpl", param1, param2, param3 )
+}
+
+let setConfig = (config) => {
+    return electron.ipcRenderer.invoke('set_config', config)
+}
+
+let getConfig = () => {
+    return electron.ipcRenderer.invoke('config')
 }
 
 let setPLListener = (listenerFunc) => {
@@ -85,5 +93,7 @@ electron.contextBridge.exposeInMainWorld("api", {
     downloadPl,
     selectOutput,
     valid,
-    theme
+    theme,
+    setConfig,
+    getConfig
 })

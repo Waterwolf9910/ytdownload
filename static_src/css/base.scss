@@ -10,7 +10,14 @@
 @import "bootstrap/scss/helpers";
 @import "bootstrap/scss/root";
 @import "bootstrap/scss/card";
+@import "bootstrap/scss/forms";
 @import "bootstrap/scss/buttons";
+@import "bootstrap/scss/modal";
+@import "./SourGummy.scss";
+
+* {
+    font-family: "Sour Gummy";
+}
 
 textarea {
     resize: none;
@@ -168,6 +175,11 @@ pre {
     padding: 0px var(--bs-card-spacer-x);
 }
 
-.input-group {
+/* .form-control.btn {
+    background-color: var(--bs-btn-bg);
+    border-color: var(--bs-btn-border-color);
+} */
+
+/* .input-group {
     margin-top: 15px;
-}
+} */
