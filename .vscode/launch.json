@@ -13,7 +13,7 @@
             "windows": {
                 "runtimeExecutable": "${workspaceFolder}/.yarn/unplugged/electron-npm-33.0.1-da971844f1/node_modules/electron/dist/electron.exe"
             },
-            "program": "${workspaceFolder}/dist/index.js",
+            "program": "${workspaceFolder}/app/dist/index.js",
             "args": [
                 "--remote-debugging-port=9222",
                 "."

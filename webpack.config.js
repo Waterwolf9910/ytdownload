@@ -79,7 +79,7 @@ let config = {
         ]
     },
     output: {
-        path: path.resolve("dist", "static"),
+        path: path.resolve(__dirname, "app/dist/static"),
         charset: true,
         clean: true,
         publicPath: "/",

@@ -7,7 +7,8 @@ type playlistListener = (vidList: {
         query: ytpl.Item
     }[],
     title: string,
-    url: string
+    url: string,
+    start_index: number,
 }) => any
 type progressListener = (title: string, type: 'dl' | 'process', value: number, max: number, dl_type: 'audio' | 'video') => any
 
@@ -29,8 +30,8 @@ declare global {
             setPLListener: (listenerFunc: playlistListener) => void
             setProgressListener: (listenerFunc: progressListener) => void,
             concurrency: (dl: number | string, proc: number | string) => Promise<string>
-            plRequest: (link: string, reversePl: boolean, customRegExp: string[]) => void,
-            downloadPl: (list: {title: string, query: ytpl.Item}[], audioOnly: boolean, title: string) => void
+            plRequest: (link: string, reversePl: boolean, customRegExp: string[], range_start: number, range_end: number) => void,
+            downloadPl: (list: {title: string, query: ytpl.Item}[], audioOnly: boolean, title: string, start_index: number) => void
             downloadVid: (url: string, audioOnly: boolean, customRegExp: string[]) => void
             selectOutput: () => Promise<string>,
             valid: (url: string) =>  Promise<"pl" | boolean>,

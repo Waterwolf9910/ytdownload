@@ -31,7 +31,7 @@ export default ({ data, clickDelete }: props) => {
         
     })
     
-    return <div className="card" style={{width: '90%'}}>
+    return <div className="card" style={{width: '100%'}}>
         <div className="row" style={{justifyContent: "space-between"}}>
             <div className="row center_items" style={{justifyContent: 'flex-start'}}>
                 <img style={{width: 128, height: 72}} ref={img} id={`card_${data.eid}`} title="video_img"/>

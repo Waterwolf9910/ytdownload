@@ -3,7 +3,7 @@
         "module": "NodeNext",
         "target": "ESNext",
         "rootDir": "src",
-        "outDir": "dist",
+        "outDir": "app/dist",
         "sourceMap": true,
         "resolvePackageJsonExports": true,
         "resolveJsonModule": true,

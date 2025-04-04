@@ -1,6 +1,6 @@
 {
-    "name": "youtube_download",
-    "version": "3.0.0",
+    "name": "youtube_download-src",
+    "version": "3.1.0",
     "homepage": "https://waterwolfies.com",
     "license": "MIT",
     "private": true,
@@ -11,20 +11,21 @@
         "name": "Waterwolf9910",
         "url": "https://waterwolfies.com"
     },
-    "packageManager": "yarn@4.5.0",
+    "packageManager": "yarn@4.7.0",
     "dependencies": {
-        "@distube/ytdl-core": "^4.15.1",
-        "@distube/ytpl": "patch:@distube/ytpl@npm%3A1.2.1#~/.yarn/patches/@distube-ytpl-npm-1.2.1-9b3ebcfa7b.patch",
+        "@distube/ytdl-core": "^4.16.6",
+        "@distube/ytpl": "1.2.1",
         "bootstrap": "^5.3.2",
         "dayjs": "^1.11.0",
-        "electron-updater": "6.1.4",
+        "electron-updater": "^6.6.2",
         "express": "latest",
         "ffmpeg-static": "^5.2.0",
+        "pythonia": "^1.2.2",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "ytpl": "latest"
     },
-    "main": "dist/index.js",
+    "main": "app/dist/index.js",
     "scripts": {
         "start": "tsc && yarn webpack -c webpack.config.js && electron dist/index.js",
         "prepareDebug": "yarn tsc",
@@ -77,6 +78,9 @@
             "unplugged": true
         },
         "builder-util": {
+            "unplugged": true
+        },
+        "pythonia@1.2.2": {
             "unplugged": true
         }
     },

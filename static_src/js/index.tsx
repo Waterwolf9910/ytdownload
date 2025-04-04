@@ -7,8 +7,6 @@ import close from "../bootstrap-icons-1.11.1/x-circle.svg"
 import VideoProgress from "./components/video_progress"
 import {Modal} from 'bootstrap'
 
-let valid = false
-let isPL = false
 let logs_list: string[] = []
 let errors_list: string[] = []
 
@@ -38,14 +36,16 @@ const page = () => {
     let [regex, set_regex] = react.useState('')
     let [regex_test, set_regex_test] = react.useState('')
     let [config_modal, set_config_modal] = react.useState<Modal>()
-    // let url = react.useRef<HTMLInputElement>(null)
-    // let audio = react.useRef<HTMLInputElement>(null)
-    let reverse = react.useRef<HTMLButtonElement>(null)
-    let submit = react.useRef<HTMLInputElement>(null)
+    let [start_index, set_start_index] = react.useState(0)
+    let [valid, set_valid] = react.useState(false)
+    let [isPL, set_isPL] = react.useState(false)
+    let link = react.useRef<HTMLInputElement>(null)
     let dl = react.useRef<HTMLInputElement>(null)
     let proc = react.useRef<HTMLInputElement>(null)
     let logs = react.useRef<HTMLTextAreaElement>(null)
     let err = react.useRef<HTMLTextAreaElement>(null)
+    let pl_range_start = react.useRef<HTMLInputElement>(null)
+    let pl_range_end = react.useRef<HTMLInputElement>(null)
     // let regex_tester = react.useRef<HTMLInputElement>(null)
     // let regex_result = react.useRef<HTMLInputElement>(null)
     // let regex_flags = react.useRef<HTMLSelectElement>(null)
@@ -70,12 +70,14 @@ const page = () => {
         let regex_list = regex.replace(/\/([^/]+)\/([a-z])?,?/g, '$1\\,$2').split(' ')
         if (valid && isPL) {
             // let regex = regexp.value.split(",")
-            window.api.plRequest(url, reverse_pl, regex_list)
+            window.api.plRequest(url, reverse_pl, regex_list, pl_range_start.current!.valueAsNumber, pl_range_end.current!.valueAsNumber)
         } else if (valid) {
             window.api.downloadVid(url, audio_only, regex_list)
         } else {
             alert("Not a valid yt link")
         }
+        set_url("")
+        link.current!.value = ""
     }
 
     let onInput = async (e: react.FormEvent<HTMLInputElement>) => {
@@ -83,6 +85,11 @@ const page = () => {
         set_url(e.currentTarget.value)
         if (!url) {
             check.current!.style.backgroundColor = ''
+            // reverse.current!.disabled = true
+            // submit.current!.disabled = true
+            pl_range_start.current!.hidden = true
+            pl_range_end.current!.hidden = true
+            set_valid(false)
             return
         }
         try {
@@ -91,22 +98,42 @@ const page = () => {
             check.current!.style.backgroundColor = "green"
             if (!_valid) {
                 check.current!.style.backgroundColor = "yellow"
-                reverse.current!.disabled = true
-                submit.current!.disabled = true
-                valid = false
-                isPL = false
+                // reverse.current!.disabled = true
+                // submit.current!.disabled = true
+                pl_range_start.current!.hidden = true
+                pl_range_end.current!.hidden = true
+                set_valid(false)
+                set_isPL( false)
                 return
             }
-            valid = true
-            submit.current!.disabled = false
-            reverse.current!.disabled = !(isPL = _valid == 'pl')
+            set_valid(true)
+            // submit.current!.disabled = false
+            set_isPL(_valid == 'pl')
+            pl_range_start.current!.hidden = 
+            pl_range_end.current!.hidden =
+            !(isPL = _valid == 'pl')
+            // reverse.current!.disabled = 
             check.current!.style.backgroundColor = _valid == 'pl' ? "aqua" : 'green'
+            
         } catch (err) {
-            submit.current!.disabled = true
-            reverse.current!.disabled = true
+            // submit.current!.disabled = true
+            // reverse.current!.disabled = true
+            pl_range_start.current!.hidden = true
+            pl_range_end.current!.hidden = true
             check.current!.style.backgroundColor = "red"
-            valid = false
+            set_valid(false)
         }
+    }
+
+    let onRangeInput = async () => {
+        let start_range = pl_range_start.current!.valueAsNumber;
+        let end_range = pl_range_end.current!.valueAsNumber;
+        let start_valid = (pl_range_start.current!.valueAsNumber > 1 && (start_range <= end_range || end_range == -1)) || start_range == -1
+        let end_valid = end_range > start_range || end_range == -1
+        pl_range_start.current!.style.backgroundColor = start_valid ? "" : "red"
+        pl_range_end.current!.style.backgroundColor = end_valid ? "" : "red"
+        set_valid(start_valid && end_valid)
+        // submit.current!.disabled = !valid
     }
 
     let regexTest = () => {
@@ -124,11 +151,12 @@ const page = () => {
     }
 
     let onPlDlClick = () => {
-        window.api.downloadPl(video_list, audio_only, current_list.title)
+        window.api.downloadPl(video_list, audio_only, current_list.title, start_index)
         set_tab(0)
         //@ts-ignore
         set_list({})
         set_videos([])
+        set_start_index(0)
         // set_audio_only(false)
     }
 
@@ -170,6 +198,7 @@ const page = () => {
             set_list(data)
             set_tab(1)
             set_videos([...data.items])
+            set_start_index(data.start_index)
             // set_ao(audio.current!.checked)
         })
 
@@ -178,7 +207,7 @@ const page = () => {
             color_mode.current!.style.filter = theme == "dark" ? 'invert(100%)' : ''
         })
         
-        submit.current!.disabled = true
+        // submit.current!.disabled = true
 
     }, [])
 
@@ -221,7 +250,7 @@ const page = () => {
                 <div className="col">
                         <div className="input-group">
                             <span className="input-group-text">Enter Link Here</span>
-                            <input title='url' type="url" autoFocus required className="form-control" onInput={onInput} onKeyDown={e => {
+                            <input ref={link} title='url' type="url" autoFocus required className="form-control" onInput={onInput} onKeyDown={e => {
                                 if (e.key == "Enter" || e.code == "Enter") {
                                     sendReq()
                                 }
@@ -243,7 +272,7 @@ const page = () => {
                         <span className="input-group-text">Audio Only</span>
                         <button /* type="checkbox" */ className={`form-control btn btn-${audio_only ? 'success' : 'danger'}`} onClick={() => set_audio_only(!audio_only)}>{audio_only ? 'Enabled' : 'Disabled'}</button>
                         <span className="input-group-text">Reverse</span>
-                        <button ref={reverse} /* type="checkbox" */ className={`form-control btn btn-${reverse_pl ? 'success' : 'danger'}`} onClick={() => set_reverse_pl(!reverse_pl)} disabled>{reverse_pl ? 'Enabled' : 'Disabled'}</button>
+                        <button /*ref={reverse}*/ /* type="checkbox" */ className={`form-control btn btn-${reverse_pl ? 'success' : 'danger'}`} onClick={() => {set_reverse_pl(!reverse_pl); console.log("hi")}} disabled={!isPL}>{reverse_pl ? 'Enabled' : 'Disabled'}</button>
                     </div>
                     {/* <div className="options">
                          <div className="row center_items" style={{ marginBottom: 0 }}>
@@ -291,8 +320,13 @@ const page = () => {
                         <input type="text" title="regexp_test" ref={regex_tester} onInput={onRegexTest} />
                         <input type="text" title="regexp_result" ref={regex_result} readOnly style={{ pointerEvents: "none" }} />
                     </div> */}
-                    <div>
-                        <input type="button" ref={submit} value="submit" size={50} onClick={sendReq} />
+                    <div className="input-group btn-group">
+                        <span className="input-group-text">Range</span>
+                        <input className="form-control" hidden type="number" ref={pl_range_start} defaultValue={-1} onInput={onRangeInput} title="playlist start" />
+                        <input className="form-control btn btn-primary" type="button" /*ref={submit}*/ value="submit" size={50} onClick={sendReq} disabled={!valid}/>
+                        <input className="form-control" hidden type="number" ref={pl_range_end} defaultValue={-1} onInput={onRangeInput} title="playlist end"/>
+                        {/* {isPL ? <>
+                        </> : <></>} */}
                     </div>
                 </div>
                 <div className="row center_items">
@@ -304,16 +338,21 @@ const page = () => {
         }
         case 1: {
             if (video_list.length < 1) {
+                if (start_index != -1) {
+                    main = <p>Invalid Range for Playlist</p>
+                    break
+                }
                 main = <p>No playlist selected</p>
                 break;
             }
             let videos: JSX.Element[] = []
-            let id = 0;
+            let id = start_index;
             for (let video of video_list) {
                 videos.push(<Video key={id} data={{...video.query, title: video.title, eid: id++}} clickDelete={e => {
                     set_videos(video_list.filter(e => e.title != video.title))
                 }}/>)
             }
+            // video_list[0].query.
             main = <div className="col center_items" style={{width: "100%"}}>
                 <h3><a className="link-info" href={current_list.url}>{current_list.title}</a></h3>
                 <input value={"Download"} title="download" onClick={onPlDlClick} type="button" />
@@ -355,9 +394,9 @@ const page = () => {
                             <span className="input-group-text">Video File Type</span>
                             <select className="form-select" value={temp_config?.video_format} onChange={e => set_temp_config({ ...temp_config!, video_format: e.currentTarget.value as program_config['video_format'] })}>
                                 <option value="av1">av1</option>
-                                <option value="mp4">mp4</option>
-                                <option value="webp">webp</option>
                                 <option value="mkv">mkv</option>
+                                <option value="webp">webp</option>
+                                <option value="mp4">mp4</option>
                                 <option value="flv">flv</option>
                             </select>
                         </div>
@@ -366,6 +405,12 @@ const page = () => {
                             <p> (Will allow you to download your private video and age restricted)</p>
                             <textarea defaultValue={JSON.stringify(temp_config?.cookies, null, 4)} onChange={e => {
                                 try {
+                                    if (!e.currentTarget.value) {
+                                        //@ts-ignore
+                                        set_temp_config({...temp_config, cookies: []})
+                                        set_cookies_valid(true)
+                                        return
+                                    }
                                     let cookies = JSON.parse(e.currentTarget.value)
                                     if (!Array.isArray(cookies)) {
                                         throw ""

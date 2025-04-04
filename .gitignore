@@ -10,11 +10,11 @@
 !.yarn/cache/
 # .pnp.*
 
-out
-dist
 build
-builds
 temp
 dev-*
+unneeded_test_files
+__pycache__
+.env
 
 !*.zip

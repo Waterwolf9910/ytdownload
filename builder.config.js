@@ -3,10 +3,10 @@ let path = require("path")
 let fs = require("fs")
 let appConfig = require("./package.json")
 
-fs.rmSync(path.resolve("./build"), { recursive: true })
-fs.mkdirSync(path.resolve("./build"), { recursive: true })
-fs.copyFileSync(path.resolve(".pnp.cjs"), path.resolve("dist", ".pnp.cjs"))
-fs.copyFileSync(path.resolve(".pnp.loader.mjs"), path.resolve("dist", ".pnp.loader.mjs"))
+fs.rmSync(path.resolve(__dirname, "./build"), { recursive: true })
+fs.mkdirSync(path.resolve(__dirname, "./build"), { recursive: true })
+fs.copyFileSync(path.resolve(__dirname, "app/.pnp.cjs"), path.resolve("app/dist", ".pnp.cjs"))
+// fs.copyFileSync(path.resolve(__dirname, "app/.pnp.loader.mjs"), path.resolve("app/dist", ".pnp.loader.mjs"))
 
 /**
  * @type {import("builder-util").ArchType[]}
@@ -18,16 +18,22 @@ let winArches = [
 /**
  * @type {import("app-builder-lib/out/core").Publish}
  */
-let publish = {
-    provider: "generic",
-    url: "https://waterwolfies.com/downloads/ytdl_prog/${os}/",
-}
+let publish = [
+    {
+        provider: "github",
+        
+    },
+    {
+        provider: "generic",
+        url: "https://waterwolfies.com/downloads/ytdl_prog/${os}/",
+    }
+]
 
 /**
  * @type {import("electron-builder").Configuration}
  */
 let config = {
-    appId: `com.waterwolfies.${ appConfig.name }`,
+    appId: `com.waterwolfies.${appConfig.name}`,
     publish,
     appImage: {
     },
@@ -43,28 +49,26 @@ let config = {
     },
     buildDependenciesFromSource: true,
     files: [
-        "**/*",
-        "!build${/*}",
-        "!builds${/*}",
-        "!static_src${/*}",
-        "!src${/*}",
-        "!bak${/*}",
-        "!.vscode${/*}",
-        "!.eslint.json",
-        "!builder.config.js",
-        "!docker-compose.yml",
-        "!Dockerfile",
-        "!README.md",
-        "!tsconfig.json",
-        "!webpack.config.js"
+        "dist",
     ],
     extraResources: [
-        ".yarn${/*}",
-        "!.yarn/releases${/*}",
-        "!.yarn/sdks${/*}",
-        "!.yarn/install-state.gz",
-        ".pnp.cjs",
-        ".pnp.loader.mjs"
+        {
+            from: "app/.yarn",
+            to: ".yarn",
+            filter: [
+                "!releases${/*}",
+                "!sdks${/*}",
+                "!install-state.gz",
+            ]
+        },
+        {
+            from: "app/.pnp.cjs",
+            to: ".pnp.cjs"
+        },
+        // {
+        //     from: "app/.pnp.loader.mjs"
+        //     to: ".pnp.loader.mjs"
+        // }
     ],
     win: {
         target: [
@@ -128,7 +132,7 @@ module.exports = config;
 
 if (process.platform == "win32") {
     let _icoinv = setInterval(() => {
-        let icon = path.resolve("build/${os}/${version}/${arch}/.icon-ico/icon.ico")
+        let icon = path.resolve(__dirname, "build/${os}/${version}/${arch}/.icon-ico/icon.ico")
         let location = icon.replace('${version}', appConfig.version)
         if (fs.existsSync(icon) && !fs.existsSync(location)) {
             if (fs.statSync(icon).size > 10) {

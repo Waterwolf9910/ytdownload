@@ -1,21 +1,34 @@
 import fs = require("fs")
 import path = require("path")
-try {
-    require(path.resolve(process.resourcesPath, ".pnp.cjs")).setup()
-} catch {
-    require("../../.pnp.cjs").setup()
+import workers = require("worker_threads")
+if (!workers.isMainThread) {
+    try {
+        require(path.resolve(process.resourcesPath, ".pnp.cjs")).setup()
+    } catch {
+        require("../../.pnp.cjs").setup()
+    }
 }
 // import electron = require("electron")
 import ytdl = require("@distube/ytdl-core")
 import dayjs = require("dayjs")
 import ffmpegPath = require("ffmpeg-static")
 import child_process = require('child_process')
-import workers = require("worker_threads")
 import readline = require('readline')
 import https = require("https")
 
 //@ts-ignore
 let ffmpeg_path: string = ffmpegPath
+
+let cache_info_path: string
+let cache_path: string
+let cache: {[video_id: string]: {path: string, format: string}}
+if (workers.isMainThread) {
+    cache_path = path.resolve(require('electron').app.getPath("userData"), "video_cache")
+    cache_info_path = path.resolve(require('electron').app.getPath("userData"), "video_cache.json")
+    cache = !fs.existsSync(cache_info_path) ? {} : JSON.parse(fs.readFileSync(cache_info_path, 'utf-8'))
+    fs.mkdirSync(cache_path, {recursive: true})
+}
+
 
 interface pi {
     from_pl: boolean
@@ -28,6 +41,7 @@ interface pi {
     url: string,
     track: number,
     thumbnail_url: string,
+    video_id: string
     // audio_url: string,
     // video_url: string
 }
@@ -44,30 +58,44 @@ interface pl_process_info extends pi {
 
 type process_info = single_process_info | pl_process_info
 
-let download_requested = async (audio_only: boolean, info: process_info, message: (channel: string, ...args: any[]) => any, config: {video_format: string, audio_format: string}) => {
+// TODO: Check cache file to not redownload files
+let download_requested = async (audio_only: boolean, info: process_info, message: (channel: string, ...args: any[]) => any, config: {video_format: string, audio_format: string, cookies: ytdl.Cookie[]}, _cache: typeof cache) => {
 
     let onError = (err: string | Error) => {
         message("error", err)
         return err
     }
     let ytdl_download = (video = false) => new Promise<void>((r, i) => {
-        //@ts-ignore
-        let agent = ytdl.createAgent(config.cookies)
-        let file = fs.createWriteStream(video ? info.video_path : info.audio_path)
-        let stream = ytdl(info.url, { liveBuffer: 25000, highWaterMark: 1024 * 1024 * 64, quality: video ? 'highestvideo' : "highestaudio", agent })
-        stream.on("progress", (length, downloaded, total) => {
-            //console.log(downloaded, total)
-            message('progress', info.title, 'dl', downloaded, total, video ? 'video' : 'audio')
-        })
-        stream.pipe(file, { end: true })
-        stream.on('end', () => {
-            file.close()
-            r()
-        })
-        stream.on('error', () => {
-            i()
-        })
+        try {
+            let agent = ytdl.createAgent(config.cookies, {
+                connections: 4, pipelining: 2
+            })
+            let file = fs.createWriteStream(video ? info.video_path : info.audio_path)
+            let stream = ytdl(info.url, { liveBuffer: 25000, quality: video ? 'highestvideo' : "highestaudio", agent })
+                .on('error', (err) => {
+                    i(err)
+                })
+                .on("progress", (length, downloaded, total) => {
+                    message('progress', info.title, 'dl', downloaded, total, video ? 'video' : 'audio')
+                })
+            stream.pipe(file, { end: true })
+            file.on('finish', () => {
+                file.close()
+                r()
+            })
+        } catch (err) {
+            i(err)
+            console.error(err)
+        }
     })
+
+    if (_cache[info.video_id] &&
+        (_cache[info.video_id].format == (audio_only ? config.audio_format : config.video_format)) &&
+        fs.existsSync(_cache[info.video_id].path)) 
+    {
+        return 304
+    }
+
     let thumbnail = new Promise<void>(r => {
         https.get(info.thumbnail_url, res => {
             let stream = fs.createWriteStream(info.thumbnail_path, { autoClose: true })
@@ -90,19 +118,18 @@ let download_requested = async (audio_only: boolean, info: process_info, message
     }
 
     try {
-        await Promise.allSettled([
-            thumbnail,
-            audio_promise,
-            video_promise
-        ])
+        await thumbnail
+        await audio_promise
+        await video_promise
     } catch (err) {
-        onError(`Error Downloading: ${info.title} are you rate limited?`)
-        return
+        onError(`Error Downloading: ${info.title} are you rate limited? ${err.statusCode ? 'Error Code: ' + err.statusCode: ''}`)
+        return err.statusCode ?? 503
     }
 
+    return 200
 }
 
-let addition_options = (audio: boolean, config: { video_format: string, audio_format: string }) => {
+let addition_options = (audio: boolean, config: { video_format: string, audio_format: string, cookies: ytdl.Cookie[] }) => {
     if (!audio) {
         switch (config.video_format) {
             case "av1": {
@@ -195,14 +222,23 @@ let addition_options = (audio: boolean, config: { video_format: string, audio_fo
     return []
 }
 
-let ffmpeg_process = async (audio_only: boolean, info: process_info, message: (channel: string, ...args: any[]) => any, config: {video_format: string, audio_format: string}, userData: string) => {
+let ffmpeg_process = async (audio_only: boolean, info: process_info, message: (channel: string, ...args: any[]) => any, config: {video_format: string, audio_format: string, cookies: ytdl.Cookie[]}, userData: string, _cache: typeof cache, cache_path: string) => {
 
     let onError = (err: Error | string) => {
         if (err) {
             message("error", `Error Downloading: ${info.title}`)
-            return `Error Downloading: ${info.title}`
+            return `Error Processing: ${info.title}`
         }
     }
+
+    if (_cache[info.video_id] &&
+        ((_cache[info.video_id].format == (audio_only ? config.audio_format : config.video_format)) &&
+        fs.existsSync(_cache[info.video_id].path)))
+    {
+        fs.copyFileSync(_cache[info.video_id].path, info.output_path)
+        return 200
+    }
+
     let date = dayjs()
     fs.appendFileSync(path.resolve(userData, "ffmpeg.log"), `${info.title} started at ${date.format("DD/MM/YYYY HH:mm:ss")}\n`)
     let ffmpegLog = fs.createWriteStream(path.resolve(userData, "ffmpeg", `${info.title.replaceAll("w/", 'with').replaceAll(/[<>:"/\\|?*]/g, '')}.log`), { autoClose: true, flags: 'a+' })
@@ -255,8 +291,6 @@ let ffmpeg_process = async (audio_only: boolean, info: process_info, message: (c
     ffmpeg.on("error", (err) => { ffmpegLog.write(onError(err)) })
     ffmpeg.stderr.pipe(ffmpegLog, { end: true })
     ffmpeg.stdout.pipe(ffmpegLog, { end: true })
-    // ffmpeg.stderr.pipe(process.stderr, { end: true })
-    // ffmpeg.stdout.pipe(process.stdout, { end: true })
     let ffprogress = readline.createInterface(ffmpeg.stdio[3] as import('stream').Readable)
     let ffstderr = readline.createInterface(ffmpeg.stderr)
     let total = Infinity
@@ -287,7 +321,7 @@ let ffmpeg_process = async (audio_only: boolean, info: process_info, message: (c
             }
         }
     })
-    await new Promise<void>(r => {
+    return await new Promise<number>(r => {
         ffmpeg.on("exit", () => {
             ffmpegLog.close()
             ffprogress.close()
@@ -297,16 +331,23 @@ let ffmpeg_process = async (audio_only: boolean, info: process_info, message: (c
             }
             fs.rmSync(info.thumbnail_path)
             fs.rmSync(info.audio_path)
-            message("log", `${info.title} Done`)
-            r()
+            if (ffmpeg.exitCode == 0) {
+                message("log", `${info.title} Done`)
+                fs.copyFileSync(info.output_path, path.resolve(cache_path, `${info.video_id}.${(audio_only ? config.audio_format : config.video_format)}`))
+                r(200)
+            } else {
+                console.error(onError('true'))
+                r(503)
+            }
+            // r(ffmpeg.exitCode == 0 ? 200 : 503)
         })
     })
 }
 
-type data = { audio_only: boolean, type: 'dl' | 'proc', info: process_info, config: { video_format: string, audio_format: string},  userData: string}
+type data = { audio_only: boolean, type: 'dl' | 'proc', info: process_info, config: { video_format: string, audio_format: string, cookies: ytdl.Cookie[]}, userData: string, cache: typeof cache, cache_path: string}
 
 class Queue {
-    #list: (data & {sender: import('electron').WebContents})[] = []
+    #list: (Omit<data, "cache" | "cache_path"> & {sender: import('electron').WebContents})[] = []
     #inv: NodeJS.Timeout
     #avalible_workers: {worker: workers.Worker, msg_channel: workers.MessageChannel}[] = []
     #running: boolean = false
@@ -335,8 +376,11 @@ class Queue {
             }
         }
         let onLog = (msg) => {
-            if (msg.done) {
+            if (msg.status) {
                 return
+            }
+            if (msg.channel != 'progress') {
+                console.log(msg)
             }
             data.sender.send(msg.channel, ...msg.args)
         }
@@ -347,7 +391,6 @@ class Queue {
                 worker: new workers.Worker(__filename, {
                     env: workers.SHARE_ENV,
                     name: data.type == 'dl' ? "Download" : "Process"
-                    // workerData: data,
                 })
             }
             worker_info.worker.postMessage(worker_info.msg_channel.port2, [worker_info.msg_channel.port2])
@@ -358,37 +401,70 @@ class Queue {
             config: data.config,
             info: data.info,
             type: data.type,
-            userData: data.userData
+            userData: data.userData,
+            cache,
+            cache_path
         } satisfies data)
 
         worker_info.msg_channel.port1.on("message", onLog)
         
-        await new Promise<void>(r => {
+        let status = await new Promise<number>(r => {
             let func = (d) => {
-                if (d.done) {
-                    r()
+                if (d.status) {
+                    r(d.status)
                     worker_info.msg_channel.port1.off('message', func)
                 }
             }
             worker_info.msg_channel.port1.on('message', func)
         })
+        if (data.type == "dl") {
+            if (status == 304) {
 
-        if (data.type == 'dl') {
-            procqueue.add(data.audio_only, data.info, data.sender, 'proc', data.config, data.userData)
+            } else if (status != 200) {
+                fs.unlinkSync(path.resolve(data.info.output_path))
+            } else {
+                procqueue.add(data.audio_only, data.info, data.sender, 'proc', data.config, data.userData)
+            }
+        } else {
+            if (status == 200) {
+                cache[data.info.video_id] = {
+                    format: data.audio_only ? data.config.audio_format : data.config.video_format,
+                    path: path.resolve(cache_path, `${data.info.video_id}.${(data.audio_only ? data.config.audio_format : data.config.video_format)}`)
+                }
+                fs.writeFileSync(cache_info_path, JSON.stringify(cache))
+            }
         }
+        // if (status == 200 && data.type == 'dl') {
+        // }
         
         worker_info.msg_channel.port1.off("message", onLog)
 
+        let unrecoverable = status == 429 || status == 403
         this.#count--
-        if (!this.#running || this.#count > this.max_count) {
+        if (!this.#running || this.#count > this.max_count || unrecoverable) {
             worker_info.worker.terminate()
+            if (this.#count == 0 && unrecoverable) {
+                data.sender.send('error', "Downloads have been cancelled due to unrecoverable error")
+                while (this.#list[0]) {
+                    fs.unlinkSync(this.#list.shift().info.output_path)
+                }
+                // let len = this.#list.length;
+                // for (let i = 0; i < len; ++i) {
+                //     try {
+                //         fs.unlinkSync(this.#list.shift().info.output_path)
+                //     } catch {}
+                // }
+            }
+            if (unrecoverable) {
+                this.#running = false;
+            }
             return
         }
         this.#avalible_workers.push(worker_info)
         this.#next()
     }
 
-    add(audio_only: boolean, info: process_info, sender: import('electron').WebContents, type: 'dl' | 'proc', config: { video_format: string, audio_format: string }, userData: string)  {
+    add(audio_only: boolean, info: process_info, sender: import('electron').WebContents, type: 'dl' | 'proc', config: { video_format: string, audio_format: string, cookies: ytdl.Cookie[] }, userData: string)  {
         this.#list.push({audio_only, info, sender, type, config, userData})
         if (this.#count < this.max_count && this.#running) {
             this.#next()
@@ -399,7 +475,7 @@ class Queue {
 
     start() {
         this.#inv = setInterval(() => {
-            if (this.#count < this.max_count) {
+            if (this.#count < this.max_count && this.#running) {
                 this.#next()
             }
             if (this.#list.length == 0 && this.#pwlock != -1) {
@@ -424,17 +500,17 @@ class Queue {
 let procqueue: Queue
 
 if (!workers.isMainThread) {
-    process.dlopen = () => {
-        throw new Error('Load native module is not safe')
-    }
     workers.parentPort.once("message", (msg: workers.MessagePort) => {
         msg.on("message", async (data: data) => {
+            let status: number
             if (data.type == 'dl') {
-                await download_requested(data.audio_only, data.info, (channel, ...args) => msg.postMessage({channel, args}), data.config)
+                status = await download_requested(data.audio_only, data.info, (channel, ...args) => msg.postMessage({ channel, args }), data.config, data.cache)
+                // msg.postMessage({status})
+                // return
             } else {
-                await ffmpeg_process(data.audio_only, data.info, (channel, ...args) => msg.postMessage({ channel, args }), data.config, data.userData)
+                status = await ffmpeg_process(data.audio_only, data.info, (channel, ...args) => msg.postMessage({ channel, args }), data.config, data.userData, data.cache, data.cache_path)
             }
-            msg.postMessage({done: true})
+            msg.postMessage({status})
             // await data.func(...data.args)
         })
     })

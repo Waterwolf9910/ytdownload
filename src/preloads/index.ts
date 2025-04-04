@@ -45,8 +45,8 @@ let setProgressListener = (listenerFunc) => {
     progressListener = listenerFunc
 }
 
-let plRequest = (param1, param2, param3) => {
-    return electron.ipcRenderer.invoke("getpl", param1, param2, param3)
+let plRequest = (param1, param2, param3, param4, param5) => {
+    return electron.ipcRenderer.invoke("getpl", param1, param2, param3, param4, param5)
 }
 
 let downloadVid = (param1, param2, param3, param4) => {
@@ -65,8 +65,8 @@ let valid = (param1) => {
 let theme = (theme = null) => {
     return electron.ipcRenderer.invoke("theme", theme)
 }
-let downloadPl = (param1, param2, param3) => {
-    electron.ipcRenderer.invoke("dlpl", param1, param2, param3 )
+let downloadPl = (param1, param2, param3, param4) => {
+    electron.ipcRenderer.invoke("dlpl", param1, param2, param3, param4)
 }
 
 let setConfig = (config) => {

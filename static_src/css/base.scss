@@ -163,9 +163,12 @@ pre {
 }
 
 .card {
-    margin-top: 15px;
-    margin-bottom: 15px;
+    margin-top: 8px;
+    margin-bottom: 8px;
     border-width: 0;
+    > div {
+        margin: 10px;
+    }
 }
 
 .card-body {

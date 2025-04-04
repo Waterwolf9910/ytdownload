@@ -1,0 +1,26 @@
+diff --git a/lib/sig.js b/lib/sig.js
+index 31fb861d4a84360925fcafc8623979de359f659c..358a2572fc0badd1574a3e2c0824ee18d1622db3 100644
+--- a/lib/sig.js
++++ b/lib/sig.js
+@@ -135,7 +135,8 @@ const extractDecipherWithName = (exports.d2 = body => {
+     const helperPattern = `(var ${helperObjectName.replace(/\$/g, "\\$")}=\\{[\\s\\S]+?\\}\\};)`;
+     const helperObject = matchGroup(helperPattern, body, 1);
+     const callerFunc = `${decipherFuncName}(${DECIPHER_ARGUMENT});`;
+-    return helperObject + decipherFunc + callerFunc;
++    const required_global = matchGroup(/'use strict';(var [A-z0-9]+=\[?['"].*youtube.player.web_[A-z0-9_]+(("\])|('\.split\(";"\))))/, body, 1)
++    return required_global + "\n" + helperObject + decipherFunc + callerFunc;
+   } catch (e) {
+     return null;
+   }
+diff --git a/lib/utils.js b/lib/utils.js
+index 47e60c7a38370f9266fe92890f968d48e136793b..0716b76a2d237a8efbb394d9f3cac6d9a4d95aab 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -345,6 +345,7 @@ const normalizeIP = ip => {
+ };
+ 
+ exports.saveDebugFile = (name, body) => {
++  return "disabled"
+   const filename = `${+new Date()}-${name}`;
+   writeFileSync(filename, body);
+   return filename;
