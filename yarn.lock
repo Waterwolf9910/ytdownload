@@ -2695,18 +2695,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron-publish@npm:^24.8.0":
-  version: 24.13.1
-  resolution: "electron-publish@npm:24.13.1"
+"electron-publish@patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch":
+  version: 25.1.7
+  resolution: "electron-publish@patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch::version=25.1.7&hash=aa9627"
   dependencies:
     "@types/fs-extra": "npm:^9.0.11"
-    builder-util: "npm:24.13.1"
-    builder-util-runtime: "npm:9.2.4"
+    builder-util: "npm:25.1.7"
+    builder-util-runtime: "npm:9.2.10"
     chalk: "npm:^4.1.2"
     fs-extra: "npm:^10.1.0"
     lazy-val: "npm:^1.0.5"
     mime: "npm:^2.5.2"
-  checksum: 10/60133b51bf186a70f710d6f656901d0ec358bcd688294c675711107d947fe961ebaf99fee7108f3a48270b09e0ef71568b0148df363de2dfb09a3c7bb1475c62
+  checksum: 10/3bff6ee1fbea2cb27afbe19fbc3f84071b1c80af42c759a7a5e9f89fd0339c0e0f34864456d49d20cb1bf5e07c5fc4bdeaac131cf8ae00544e2f9afd36648707
   languageName: node
   linkType: hard
 
@@ -6941,7 +6941,7 @@ __metadata:
     dayjs: "npm:^1.11.0"
     electron: "npm:latest"
     electron-builder: "npm:latest"
-    electron-publish: "npm:^24.8.0"
+    electron-publish: "patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch"
     electron-updater: "npm:^6.6.2"
     eslint: "npm:^8.52.0"
     express: "npm:latest"

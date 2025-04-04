@@ -1,0 +1,22 @@
+diff --git a/out/gitHubPublisher.js b/out/gitHubPublisher.js
+index 79b0bd8d213ebfd6142342476216851ea523e4bc..23414e7a1ec6a5c5e04dae3b722d80e800943ce1 100644
+--- a/out/gitHubPublisher.js
++++ b/out/gitHubPublisher.js
+@@ -126,7 +126,7 @@ class GitHubPublisher extends publisher_1.HttpPublisher {
+             builder_util_1.log.warn({ file: fileName, ...this.releaseLogFields }, "skipped publishing");
+             return;
+         }
+-        const parsedUrl = (0, url_1.parse)(`${release.upload_url.substring(0, release.upload_url.indexOf("{"))}?name=${fileName}`);
++        const parsedUrl = (0, url_1.parse)(`${release.upload_url}?name=${fileName}`);
+         return await this.doUploadFile(0, parsedUrl, fileName, dataLength, requestProcessor, release);
+     }
+     doUploadFile(attemptNumber, parsedUrl, fileName, dataLength, requestProcessor, release) {
+@@ -213,7 +213,7 @@ class GitHubPublisher extends publisher_1.HttpPublisher {
+             protocol: baseUrl.protocol,
+             hostname: baseUrl.hostname,
+             port: baseUrl.port,
+-            path: this.info.host != null && this.info.host !== "github.com" ? `/api/v3${path.startsWith("/") ? path : `/${path}`}` : path,
++            path: this.info.host != null && this.info.host !== "github.com" ? `/api/v1${path.startsWith("/") ? path : `/${path}`}` : path,
+             headers: { accept: "application/vnd.github.v3+json" },
+             timeout: this.info.timeout || undefined,
+         }, token, method), this.context.cancellationToken, data));

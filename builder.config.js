@@ -3,9 +3,9 @@ let path = require("path")
 let fs = require("fs")
 let appConfig = require("./package.json")
 
-fs.rmSync(path.resolve(__dirname, "./build"), { recursive: true })
-fs.mkdirSync(path.resolve(__dirname, "./build"), { recursive: true })
-fs.copyFileSync(path.resolve(__dirname, "app/.pnp.cjs"), path.resolve("app/dist", ".pnp.cjs"))
+// fs.rmSync(path.resolve(__dirname, "./build"), { recursive: true })
+// fs.mkdirSync(path.resolve(__dirname, "./build"), { recursive: true })
+// fs.copyFileSync(path.resolve(__dirname, "app/.pnp.cjs"), path.resolve("app/dist", ".pnp.cjs"))
 // fs.copyFileSync(path.resolve(__dirname, "app/.pnp.loader.mjs"), path.resolve("app/dist", ".pnp.loader.mjs"))
 
 /**
@@ -21,7 +21,9 @@ let winArches = [
 let publish = [
     {
         provider: "github",
-        
+        host: "git.waterwolfies.com",
+        owner: "waterwolf9910",
+        repo: "ytdownload"
     },
     {
         provider: "generic",

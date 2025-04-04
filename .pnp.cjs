@@ -1015,7 +1015,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "electron-publish",\
-      "npm:24.13.1"\
+      "patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch::version=25.1.7&hash=aa9627"\
     ],\
     [\
       "electron-to-chromium",\
@@ -2600,7 +2600,7 @@ const RAW_RUNTIME_STATE =
           ["dayjs", "npm:1.11.13"],\
           ["electron", "npm:33.0.1"],\
           ["electron-builder", "npm:25.1.8"],\
-          ["electron-publish", "npm:24.13.1"],\
+          ["electron-publish", "patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch::version=25.1.7&hash=aa9627"],\
           ["electron-updater", "npm:6.6.2"],\
           ["eslint", "npm:8.57.1"],\
           ["express", "npm:4.21.1"],\
@@ -4518,7 +4518,7 @@ const RAW_RUNTIME_STATE =
           ["dotenv-expand", "npm:11.0.6"],\
           ["ejs", "npm:3.1.10"],\
           ["electron-builder-squirrel-windows", null],\
-          ["electron-publish", "npm:25.1.7"],\
+          ["electron-publish", "patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch::version=25.1.7&hash=aa9627"],\
           ["form-data", "npm:4.0.1"],\
           ["fs-extra", "npm:10.1.0"],\
           ["hosted-git-info", "npm:4.1.0"],\
@@ -4567,7 +4567,7 @@ const RAW_RUNTIME_STATE =
           ["dotenv-expand", "npm:11.0.6"],\
           ["ejs", "npm:3.1.10"],\
           ["electron-builder-squirrel-windows", null],\
-          ["electron-publish", "npm:25.1.7"],\
+          ["electron-publish", "patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch::version=25.1.7&hash=aa9627"],\
           ["form-data", "npm:4.0.1"],\
           ["fs-extra", "npm:10.1.0"],\
           ["hosted-git-info", "npm:4.1.0"],\
@@ -5951,24 +5951,10 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["electron-publish", [\
-      ["npm:24.13.1", {\
-        "packageLocation": "../snap/code/186/.local/share/yarn/berry/cache/electron-publish-npm-24.13.1-40acfab2ad-10.zip/node_modules/electron-publish/",\
+      ["patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch::version=25.1.7&hash=aa9627", {\
+        "packageLocation": "../snap/code/186/.local/share/yarn/berry/cache/electron-publish-patch-f92c417027-10.zip/node_modules/electron-publish/",\
         "packageDependencies": [\
-          ["electron-publish", "npm:24.13.1"],\
-          ["@types/fs-extra", "npm:9.0.13"],\
-          ["builder-util", "npm:25.1.7"],\
-          ["builder-util-runtime", "npm:9.2.10"],\
-          ["chalk", "npm:4.1.2"],\
-          ["fs-extra", "npm:10.1.0"],\
-          ["lazy-val", "npm:1.0.5"],\
-          ["mime", "npm:2.6.0"]\
-        ],\
-        "linkType": "HARD"\
-      }],\
-      ["npm:25.1.7", {\
-        "packageLocation": "../snap/code/186/.local/share/yarn/berry/cache/electron-publish-npm-25.1.7-667d392edc-10.zip/node_modules/electron-publish/",\
-        "packageDependencies": [\
-          ["electron-publish", "npm:25.1.7"],\
+          ["electron-publish", "patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch::version=25.1.7&hash=aa9627"],\
           ["@types/fs-extra", "npm:9.0.13"],\
           ["builder-util", "npm:25.1.7"],\
           ["builder-util-runtime", "npm:9.2.10"],\
@@ -10868,7 +10854,7 @@ const RAW_RUNTIME_STATE =
           ["dayjs", "npm:1.11.13"],\
           ["electron", "npm:33.0.1"],\
           ["electron-builder", "npm:25.1.8"],\
-          ["electron-publish", "npm:24.13.1"],\
+          ["electron-publish", "patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch::version=25.1.7&hash=aa9627"],\
           ["electron-updater", "npm:6.6.2"],\
           ["eslint", "npm:8.57.1"],\
           ["express", "npm:4.21.1"],\
