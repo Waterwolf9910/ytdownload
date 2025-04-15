@@ -47,7 +47,7 @@
         "autoprefixer": "^10.4.16",
         "builder-util": "latest",
         "css-loader": "^6.8.1",
-        "electron": "latest",
+        "electron": "29.1.6",
         "electron-builder": "latest",
         "electron-publish": "patch:electron-publish@npm%3A25.1.7#~/.yarn/patches/electron-publish-npm-25.1.7-667d392edc.patch",
         "eslint": "^8.52.0",
